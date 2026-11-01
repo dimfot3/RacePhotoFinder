@@ -9,9 +9,12 @@ margin pass `config.yaml`.
 Face-derived matches are deliberately excluded from participant templates to
 prevent one wrong match from contaminating later matches.
 
-Bib search also retrieves non-mutating face suggestions. Its cosine threshold
-is `search_similarity` in `config.yaml`; suggested photos are displayed
-separately from bib-confirmed photos.
+Bib search also performs a non-mutating similarity pass using
+`search_similarity` from `config.yaml`. Bib/manual associations are returned
+first, followed by additional face-similar photos ordered by similarity; the UI
+combines them in one gallery. This search-time pass does not write new
+associations, while the stricter post-import matcher does persist accepted face
+associations in the database.
 
 The included InsightFace pretrained weight is licensed for non-commercial
 research unless separate authorization is obtained from InsightFace.

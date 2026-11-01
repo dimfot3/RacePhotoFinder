@@ -13,8 +13,11 @@ frame.
 photo → person detection → bib recognition + face embedding → participant match
 ```
 
-Confirmed bib photos and possible face matches are shown separately. Face
-suggestions do not change participant records or become training references.
+The importer builds each participant's face template only from photos where the
+bib was recognized. It then associates sufficiently confident unmatched faces
+with that participant. Search combines bib-confirmed and face-matched photos in
+one gallery. Face-derived matches never feed back into the templates, which
+prevents one uncertain match from influencing later matches.
 
 ## Run
 
