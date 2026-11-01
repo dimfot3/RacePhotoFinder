@@ -42,5 +42,32 @@ Participant details can optionally be imported from CSV with
 `--participants-csv`. Original photos remain unchanged; the application stores
 its index in SQLite and creates smaller previews for browsing.
 
-> The included InsightFace model weights are intended for non-commercial
-> research unless separately licensed.
+## Model setup
+
+Model binaries that may be redistributed are stored with Git LFS. After
+cloning, install Git LFS and retrieve them:
+
+```bash
+git lfs install
+git lfs pull
+```
+
+The InsightFace `buffalo_l` weights are not redistributed. Review the
+[official InsightFace model terms](https://github.com/deepinsight/insightface#license),
+obtain the official package, and place these files at:
+
+```text
+face_detection/weights/det_10g.onnx
+face_matching/weights/w600k_r50.onnx
+```
+
+Public InsightFace pretrained models are limited to non-commercial research
+unless separately licensed. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+for model provenance, checksums, and license details.
+
+## License
+
+Original Race Photo Finder source code is licensed under the
+[GNU Affero General Public License v3.0](LICENSE). Third-party software and
+model artifacts retain their own terms; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
