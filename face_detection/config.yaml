@@ -1,0 +1,7 @@
+model: weights/det_10g.onnx
+input_size: [640, 640]
+confidence: 0.50
+min_face_size: 40
+max_faces_per_person: 1
+device: cuda
+

@@ -1,0 +1,64 @@
+# Project data (keep the directory itself in Git)
+/datasets/*
+!/datasets/.gitkeep
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments and locally installed dependencies
+.venv/
+venv/
+env/
+.env
+.env.*
+.deps/
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local Codex/workspace metadata
+/.agents/
+/.aws/
+/.codex/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+
+# Local databases and generated thumbnails
+*.db
+*.db-shm
+*.db-wal
+thumbnails/
+
+# Generated ML artifacts and downloaded model files
+**/runs/
+**/.yolo_dataset/
+**/weights/
+*.pt
+*.pth
+*.onnx
+*.pdiparams
+*.pdiparams.info
+*.pdmodel
+**/evaluation_results.json
+

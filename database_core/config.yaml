@@ -1,0 +1,4 @@
+inference:
+  gpu_memory_fraction: 0.60
+  initial_person_batch: 4
+  max_person_batch: 16

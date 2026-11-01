@@ -1,0 +1,13 @@
+model: weights/w600k_r50.onnx
+device: cuda
+embedding_dimension: 512
+aligned_size: 112
+min_embedding_quality: 0.30
+min_template_quality: 0.40
+min_match_quality: 0.40
+template_outlier_similarity: 0.25
+minimum_similarity: 0.50
+single_reference_similarity: 0.58
+minimum_margin: 0.08
+search_similarity: 0.65
+

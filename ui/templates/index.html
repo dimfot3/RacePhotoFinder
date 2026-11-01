@@ -1,0 +1,104 @@
+{% macro photo_grid(pictures, participant) -%}
+  <section class="photo-grid" aria-label="Photos for bib {{ participant.bib }}">
+    {% for picture in pictures %}
+      <article class="photo-card">
+        <a
+          class="photo-preview"
+          href="{{ url_for('picture', picture_id=picture.picture_id) }}"
+          data-lightbox
+          data-alt="Race photo for bib {{ participant.bib }}"
+          aria-label="View race photo full size"
+        >
+          <img
+            src="{{ url_for('thumbnail', picture_id=picture.picture_id) }}"
+            alt="Race photo for bib {{ participant.bib }}"
+            loading="lazy"
+          >
+        </a>
+        <a
+          class="download-link"
+          href="{{ url_for('download_picture', picture_id=picture.picture_id) }}"
+          download
+        >
+          Download
+        </a>
+      </article>
+    {% endfor %}
+  </section>
+{%- endmacro %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Race Photo Finder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Race Photo Finder</p>
+        <h1>Find your race photos</h1>
+        <p class="intro">Enter your bib number to see every matching photo.</p>
+      </header>
+
+      <form method="get" action="{{ url_for('index') }}" role="search">
+        <label for="bib">Bib number</label>
+        <div class="search-row">
+          <input
+            id="bib"
+            name="bib"
+            value="{{ bib }}"
+            inputmode="numeric"
+            autocomplete="off"
+            maxlength="30"
+            placeholder="1389"
+            required
+            autofocus
+          >
+          <button type="submit">Search</button>
+        </div>
+      </form>
+
+      {% if error %}
+        <section class="message error" role="alert">{{ error }}</section>
+      {% elif searched and not participant %}
+        <section class="message">No participant found for bib <strong>{{ bib }}</strong>.</section>
+      {% elif participant %}
+        {% if pictures %}
+          {{ photo_grid(pictures, participant) }}
+        {% else %}
+          <section class="message">No matching photos were found for this participant.</section>
+        {% endif %}
+      {% endif %}
+    </main>
+
+    <dialog class="lightbox" id="photo-lightbox" aria-label="Full-size race photo">
+      <button class="lightbox-close" type="button" aria-label="Close photo">&times;</button>
+      <img class="lightbox-image" alt="">
+    </dialog>
+
+    <script>
+      const lightbox = document.querySelector('#photo-lightbox');
+      const lightboxImage = lightbox.querySelector('.lightbox-image');
+      const closeButton = lightbox.querySelector('.lightbox-close');
+
+      document.querySelectorAll('[data-lightbox]').forEach((link) => {
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          lightboxImage.src = link.href;
+          lightboxImage.alt = link.dataset.alt;
+          lightbox.showModal();
+        });
+      });
+
+      closeButton.addEventListener('click', () => lightbox.close());
+      lightbox.addEventListener('click', (event) => {
+        if (event.target === lightbox) lightbox.close();
+      });
+      lightbox.addEventListener('close', () => {
+        lightboxImage.removeAttribute('src');
+      });
+    </script>
+  </body>
+</html>

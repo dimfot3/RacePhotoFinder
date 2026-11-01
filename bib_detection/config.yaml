@@ -1,0 +1,16 @@
+dataset: ../datasets/person_cropped_images
+pretrained: weights/yolo26s.pt
+weights: runs/bib_yolo26s/weights/best.pt
+confidence: 0.43
+fallback_confidence: 0.01
+fallback_ocr_confidence: 0.95
+max_candidates_per_person: 5
+imgsz: 640
+batch: 8
+device: 0
+workers: 4
+train:
+  epochs: 50
+  patience: 10
+  project: runs
+  name: bib_yolo26s
