@@ -25,54 +25,72 @@ with that participant. Search combines bib-confirmed and face-matched photos in
 one gallery. Face-derived matches never feed back into the templates, which
 prevents one uncertain match from influencing later matches.
 
-## Run
+## Quick start
 
-Install dependencies:
+### 1. Clone the repository with its models
+
+The person detector, bib detector, and OCR models are included through
+[Git LFS](https://git-lfs.com). Install Git LFS before cloning:
+
+```bash
+git lfs install
+git clone https://github.com/dimfot3/RacePhotoFinder.git
+cd RacePhotoFinder
+```
+
+If you cloned without Git LFS, run `git lfs pull` inside the repository.
+
+### 2. Install dependencies
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Process an event folder and replace the previous event:
+### 3. Download the face models
+
+The InsightFace `buffalo_l` face models cannot be redistributed with this
+repository. This script downloads them directly from
+[InsightFace's official release](https://github.com/deepinsight/insightface/releases/tag/v0.7),
+verifies their SHA-256 checksums, and puts them in place:
+
+```bash
+python setup_models.py
+```
+
+> [!IMPORTANT]
+> InsightFace pretrained models are licensed for **non-commercial research
+> only**. The script asks you to accept the
+> [InsightFace terms](https://github.com/deepinsight/insightface#license) before
+> downloading. For commercial use, contact [InsightFace](https://www.insightface.ai/)
+> about a license.
+
+To accept the terms without a prompt, for example in a script, use
+`python setup_models.py --accept-license`.
+
+### 4. Process an event
+
+Point the importer at a folder of event photos. `--rerun` replaces any
+previously processed event:
 
 ```bash
 python app.py "/path/to/event/photos" --rerun
 ```
 
-Start the search interface:
+To attach names and finish times to bib numbers, add
+`--participants-csv participants.csv`. See
+[database_core/participants.example.csv](database_core/participants.example.csv)
+for the format.
+
+### 5. Search for photos
 
 ```bash
 python app.py
 ```
 
-Open `http://127.0.0.1:5000` and search by bib number.
+Open http://127.0.0.1:5000 and search by bib number.
 
-Participant details can optionally be imported from CSV with
-`--participants-csv`. Original photos remain unchanged; the application stores
-its index in SQLite and creates smaller previews for browsing.
-
-## Model setup
-
-Model binaries that may be redistributed are stored with Git LFS. After
-cloning, install Git LFS and retrieve them:
-
-```bash
-git lfs install
-git lfs pull
-```
-
-The InsightFace `buffalo_l` weights are not redistributed. Review the
-[official InsightFace model terms](https://github.com/deepinsight/insightface#license),
-obtain the official package, and place these files at:
-
-```text
-face_detection/weights/det_10g.onnx
-face_matching/weights/w600k_r50.onnx
-```
-
-Public InsightFace pretrained models are limited to non-commercial research
-unless separately licensed. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-for model provenance, checksums, and license details.
+Original photos are never modified. The application stores its index in SQLite
+and creates smaller previews for browsing.
 
 ## License
 

@@ -44,6 +44,12 @@ model binaries are therefore intentionally not redistributed by this
 repository. Each user must review the upstream terms and obtain the official
 `buffalo_l` package independently.
 
+`setup_models.py` asks the user to accept these terms, downloads `buffalo_l.zip`
+directly from InsightFace's official GitHub release
+(https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip),
+and installs only the two files above after verifying the SHA-256 checksums
+listed here.
+
 - Project and license policy: https://github.com/deepinsight/insightface
 - Official model-zoo instructions: https://github.com/deepinsight/insightface/tree/master/model_zoo
 - Commercial licensing: https://www.insightface.ai/

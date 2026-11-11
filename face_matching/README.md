@@ -16,6 +16,8 @@ combines them in one gallery. This search-time pass does not write new
 associations, while the stricter post-import matcher does persist accepted face
 associations in the database.
 
-The included InsightFace pretrained weight is licensed for non-commercial
-research unless separate authorization is obtained from InsightFace.
+The InsightFace pretrained weight (`weights/w600k_r50.onnx`) is not included in this
+repository. Run `python setup_models.py` from the project root to download it
+from InsightFace's official release. It is licensed for non-commercial research
+unless separate authorization is obtained from InsightFace.
 

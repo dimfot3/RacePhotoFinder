@@ -31,7 +31,9 @@ class ArcFaceEmbedder:
         self.config = yaml.safe_load(Path(config_path).read_text())
         model_path = ROOT / self.config["model"]
         if not model_path.is_file():
-            raise FileNotFoundError(f"ArcFace model not found: {model_path}")
+            raise FileNotFoundError(
+                f"ArcFace model not found: {model_path}. Run `python setup_models.py`."
+            )
 
         providers, ctx_id = _execution_providers(self.config.get("device"))
         self.model = get_model(str(model_path), providers=providers)
