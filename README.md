@@ -13,6 +13,12 @@ frame.
 photo → person detection → bib recognition + face embedding → participant match
 ```
 
+<p align="center">
+  <img src="docs/pipeline_example.jpg" alt="Runner annotated with person, face, and bib 1389 detections" width="220">
+  <br>
+  <sub>Real pipeline output: <b>person</b> detection (blue), <b>face</b> detection (red), and <b>bib</b> detection with OCR reading "1389" (green).</sub>
+</p>
+
 The importer builds each participant's face template only from photos where the
 bib was recognized. It then associates sufficiently confident unmatched faces
 with that participant. Search combines bib-confirmed and face-matched photos in
