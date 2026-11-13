@@ -1,6 +1,6 @@
-"""SCRFD face detection."""
+"""YuNet face detection."""
 
-from .inferer import DetectedFace, SCRFDFaceDetector
+from .inferer import DetectedFace, YuNetFaceDetector
 
-__all__ = ["DetectedFace", "SCRFDFaceDetector"]
+__all__ = ["DetectedFace", "YuNetFaceDetector"]
 

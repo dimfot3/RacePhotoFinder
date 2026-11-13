@@ -62,10 +62,3 @@ thumbnails/
 /bib_detection/runs/bib_yolo26s/weights/*
 !/bib_detection/runs/bib_yolo26s/weights/best.pt
 
-# InsightFace public pretrained models are non-commercial research assets.
-# Download them from the official model zoo after accepting its terms.
-/face_detection/weights/*
-!/face_detection/weights/.gitkeep
-/face_matching/weights/*
-!/face_matching/weights/.gitkeep
-

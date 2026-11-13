@@ -9,8 +9,8 @@ import torch
 import yaml
 
 from bib_ocr import BibOCRInferer
-from face_detection import SCRFDFaceDetector
-from face_matching.embedder import ArcFaceEmbedder
+from face_detection import YuNetFaceDetector
+from face_matching.embedder import SFaceEmbedder
 from infer import load_detector
 
 
@@ -120,8 +120,8 @@ class BatchedInferencePipeline:
         self.person_model, self.person_config = load_detector("person_detection")
         self.bib_model, self.bib_config = load_detector("bib_detection")
         self.ocr_inferer = BibOCRInferer()
-        self.face_detector = SCRFDFaceDetector()
-        self.face_embedder = ArcFaceEmbedder()
+        self.face_detector = YuNetFaceDetector()
+        self.face_embedder = SFaceEmbedder()
         self.bib_fallback_confidence = float(
             self.bib_config["fallback_confidence"]
         )

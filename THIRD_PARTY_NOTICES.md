@@ -28,31 +28,26 @@ not granted by this repository.
 - Licensing: https://docs.ultralytics.com/#yolo-licenses-how-is-ultralytics-yolo-licensed
 - AGPL-3.0 text: https://www.gnu.org/licenses/agpl-3.0.html
 
-## InsightFace buffalo_l models
+## OpenCV Zoo YuNet and SFace
 
-The application expects these InsightFace `buffalo_l` model files locally:
+Race Photo Finder includes these official OpenCV Zoo face models:
 
-- `face_detection/weights/det_10g.onnx`
-  - SHA-256: `5838f7fe053675b1c7a08b633df49e7af5495cee0493c7dcf6697200b85b5b91`
-- `face_matching/weights/w600k_r50.onnx`
-  - SHA-256: `4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43`
+- `face_detection/weights/face_detection_yunet_2023mar.onnx` (YuNet)
+  - SHA-256: `8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4`
+  - License: MIT License, Copyright (c) 2020 Shiqi Yu. Included text:
+    `licenses/YuNet-MIT.txt`
+  - Source: https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet
+  - Upstream training code: https://github.com/ShiqiYu/libfacedetection.train
+- `face_matching/weights/face_recognition_sface_2021dec.onnx` (SFace)
+  - SHA-256: `0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79`
+  - License: Apache License 2.0. Included text: `licenses/SFace-Apache-2.0.txt`
+  - Source: https://github.com/opencv/opencv_zoo/tree/main/models/face_recognition_sface
+  - Paper: https://arxiv.org/abs/2205.12010
 
-These pretrained weights are not covered by InsightFace's MIT source-code
-license. InsightFace states that its public pretrained models are available for
-non-commercial research only unless separate authorization is obtained. The
-model binaries are therefore intentionally not redistributed by this
-repository. Each user must review the upstream terms and obtain the official
-`buffalo_l` package independently.
-
-`setup_models.py` asks the user to accept these terms, downloads `buffalo_l.zip`
-directly from InsightFace's official GitHub release
-(https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip),
-and installs only the two files above after verifying the SHA-256 checksums
-listed here.
-
-- Project and license policy: https://github.com/deepinsight/insightface
-- Official model-zoo instructions: https://github.com/deepinsight/insightface/tree/master/model_zoo
-- Commercial licensing: https://www.insightface.ai/
+YuNet's upstream project states that it was trained on WIDER FACE. The SFace
+model card does not name its training dataset. Rights in third-party training
+data are separate from the model licenses above, and anyone deploying this
+software commercially should review them independently.
 
 ## PaddleOCR PP-OCRv6
 

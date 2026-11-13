@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS face_embeddings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     person_detection_id INTEGER NOT NULL UNIQUE,
     embedding BLOB NOT NULL,
-    dimension INTEGER NOT NULL DEFAULT 512,
+    dimension INTEGER NOT NULL,
     model_name TEXT NOT NULL,
     face_x1 INTEGER NOT NULL,
     face_y1 INTEGER NOT NULL,

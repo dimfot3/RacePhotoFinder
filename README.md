@@ -29,7 +29,7 @@ prevents one uncertain match from influencing later matches.
 
 ### 1. Clone the repository with its models
 
-The person detector, bib detector, and OCR models are included through
+The person detector, bib detector, OCR, and face models are included through
 [Git LFS](https://git-lfs.com). Install Git LFS before cloning:
 
 ```bash
@@ -46,28 +46,7 @@ If you cloned without Git LFS, run `git lfs pull` inside the repository.
 python -m pip install -r requirements.txt
 ```
 
-### 3. Download the face models
-
-The InsightFace `buffalo_l` face models cannot be redistributed with this
-repository. This script downloads them directly from
-[InsightFace's official release](https://github.com/deepinsight/insightface/releases/tag/v0.7),
-verifies their SHA-256 checksums, and puts them in place:
-
-```bash
-python setup_models.py
-```
-
-> [!IMPORTANT]
-> InsightFace pretrained models are licensed for **non-commercial research
-> only**. The script asks you to accept the
-> [InsightFace terms](https://github.com/deepinsight/insightface#license) before
-> downloading. For commercial use, contact [InsightFace](https://www.insightface.ai/)
-> about a license.
-
-To accept the terms without a prompt, for example in a script, use
-`python setup_models.py --accept-license`.
-
-### 4. Process an event
+### 3. Process an event
 
 Point the importer at a folder of event photos. `--rerun` replaces any
 previously processed event:
@@ -81,7 +60,7 @@ To attach names and finish times to bib numbers, add
 [database_core/participants.example.csv](database_core/participants.example.csv)
 for the format.
 
-### 5. Search for photos
+### 4. Search for photos
 
 ```bash
 python app.py

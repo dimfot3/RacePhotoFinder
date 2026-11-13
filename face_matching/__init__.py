@@ -1,2 +1,2 @@
-"""ArcFace embedding and conservative cosine matching."""
+"""SFace embedding and conservative cosine matching."""
 

@@ -1,18 +1,13 @@
-"""Five-point alignment and ArcFace embedding extraction."""
+"""Five-point alignment and SFace embedding extraction (OpenCV Zoo, Apache 2.0)."""
 
 from dataclasses import dataclass
-import os
 from pathlib import Path
 
 import cv2
 import numpy as np
-import onnxruntime as ort
 import yaml
 
-os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
-
-from insightface.model_zoo import get_model
-from insightface.utils.face_align import norm_crop
+from face_detection.inferer import _dnn_backend
 
 
 ROOT = Path(__file__).resolve().parent
@@ -26,38 +21,44 @@ class EmbeddedFace:
     aligned_face: np.ndarray
 
 
-class ArcFaceEmbedder:
+class SFaceEmbedder:
     def __init__(self, config_path=DEFAULT_CONFIG):
         self.config = yaml.safe_load(Path(config_path).read_text())
         model_path = ROOT / self.config["model"]
         if not model_path.is_file():
             raise FileNotFoundError(
-                f"ArcFace model not found: {model_path}. Run `python setup_models.py`."
+                f"SFace model not found: {model_path}. Run `git lfs pull`."
             )
 
-        providers, ctx_id = _execution_providers(self.config.get("device"))
-        self.model = get_model(str(model_path), providers=providers)
-        self.model.prepare(ctx_id=ctx_id)
-        self.aligned_size = int(self.config["aligned_size"])
+        backend, target, name = _dnn_backend(self.config.get("device"))
+        self.model = cv2.FaceRecognizerSF.create(
+            str(model_path), "", backend_id=backend, target_id=target
+        )
+        self.model_name = str(self.config["model_name"])
         self.dimension = int(self.config["embedding_dimension"])
         self.min_quality = float(self.config["min_embedding_quality"])
-        active_provider = self.model.session.get_providers()[0]
-        print(f"ArcFace embedding: {active_provider}")
+        print(f"SFace embedding: {name}")
 
     def embed(self, person_crop, detected_face):
-        aligned = norm_crop(
-            person_crop,
-            landmark=detected_face.landmarks,
-            image_size=self.aligned_size,
+        x1, y1, x2, y2 = detected_face.bbox
+        face_row = np.array(
+            [
+                x1, y1, x2 - x1, y2 - y1,
+                *np.asarray(detected_face.landmarks, dtype=np.float32).reshape(-1),
+                detected_face.confidence,
+            ],
+            dtype=np.float32,
         )
+        # alignCrop warps the five landmarks onto the standard 112x112 template.
+        aligned = self.model.alignCrop(person_crop, face_row)
         quality = _face_quality(aligned, detected_face)
         if quality < self.min_quality:
             return None
 
-        embedding = np.asarray(self.model.get_feat(aligned), dtype=np.float32).reshape(-1)
+        embedding = np.asarray(self.model.feature(aligned), dtype=np.float32).reshape(-1)
         if embedding.size != self.dimension:
             raise ValueError(
-                f"ArcFace returned {embedding.size} values; expected {self.dimension}"
+                f"SFace returned {embedding.size} values; expected {self.dimension}"
             )
         norm = float(np.linalg.norm(embedding))
         if not np.isfinite(norm) or norm <= 0:
@@ -75,11 +76,3 @@ def _face_quality(aligned_face, detected_face):
         detected_face.confidence
         * np.sqrt(max(0.0, sharpness_score * size_score))
     )
-
-
-def _execution_providers(device):
-    available = set(ort.get_available_providers())
-    if str(device).lower() != "cpu" and "CUDAExecutionProvider" in available:
-        return ["CUDAExecutionProvider", "CPUExecutionProvider"], 0
-    return ["CPUExecutionProvider"], -1
-

@@ -287,7 +287,9 @@ def import_participant_csv(connection, csv_path):
 
 def save_picture_results(connection, image_path, thumbnail_path, inference):
     """Persist every person, face embedding, and bib-confirmed association."""
-    from face_matching.matcher import encode_embedding
+    from face_matching.matcher import encode_embedding, load_config
+
+    face_config = load_config()
 
     with connection:
         connection.execute(
@@ -366,12 +368,13 @@ def save_picture_results(connection, image_path, thumbnail_path, inference):
                         face_x1, face_y1, face_x2, face_y2,
                         face_detection_confidence, face_quality
                     )
-                    VALUES (?, ?, 512, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         person_detection_id,
                         sqlite3.Binary(encode_embedding(person.face.embedding)),
-                        "insightface_w600k_r50",
+                        int(face_config["embedding_dimension"]),
+                        str(face_config["model_name"]),
                         round(fx1), round(fy1), round(fx2), round(fy2),
                         float(person.face.confidence),
                         float(person.face.quality),

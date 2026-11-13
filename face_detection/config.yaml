@@ -1,7 +1,7 @@
-model: weights/det_10g.onnx
-input_size: [640, 640]
+model: weights/face_detection_yunet_2023mar.onnx
+max_input_size: 640
 confidence: 0.50
+nms_threshold: 0.30
 min_face_size: 40
 max_faces_per_person: 1
 device: cuda
-

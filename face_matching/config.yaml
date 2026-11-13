@@ -1,13 +1,14 @@
-model: weights/w600k_r50.onnx
+model: weights/face_recognition_sface_2021dec.onnx
+model_name: opencv_sface_2021dec
 device: cuda
-embedding_dimension: 512
-aligned_size: 112
+embedding_dimension: 128
 min_embedding_quality: 0.30
 min_template_quality: 0.40
 min_match_quality: 0.40
+# Cosine thresholds for SFace. OpenCV's reference same-identity threshold is
+# 0.363; the values below are deliberately stricter. Re-tune on event photos.
 template_outlier_similarity: 0.25
-minimum_similarity: 0.50
-single_reference_similarity: 0.58
+minimum_similarity: 0.45
+single_reference_similarity: 0.52
 minimum_margin: 0.08
-search_similarity: 0.65
-
+search_similarity: 0.55
