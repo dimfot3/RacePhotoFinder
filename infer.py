@@ -18,6 +18,7 @@ from torchvision.ops import nms
 from ultralytics import YOLO
 
 from bib_ocr import BibOCRInferer
+from person_detection.detector import PersonDetector
 
 
 def load_detector(folder):
@@ -31,14 +32,12 @@ def load_detector(folder):
     return YOLO(str(weights)), config
 
 
-def detect_bibs(image, person_model, bib_model, person_config, bib_config):
+def detect_bibs(image, person_detector, bib_model, bib_config):
     """Return original-image [x1, y1, x2, y2, confidence] bib detections."""
     height, width = image.shape[:2]
-    people = person_model.predict(image, classes=[0], imgsz=person_config['imgsz'],
-                                  conf=person_config['confidence'], device=person_config['device'],
-                                  max_det=person_config['max_det'], verbose=False)[0]
+    people = person_detector.predict([image])[0]
     crops, offsets = [], []
-    for x1, y1, x2, y2 in people.boxes.xyxy.cpu().tolist():
+    for x1, y1, x2, y2 in people[:, :4].tolist():
         x1, y1 = max(0, math.floor(x1)), max(0, math.floor(y1))
         x2, y2 = min(width, math.ceil(x2)), min(height, math.ceil(y2))
         if x2 > x1 and y2 > y1:
@@ -68,11 +67,11 @@ def main():
     image = cv2.imread(str(args.image))
     if image is None:
         parser.error(f'Cannot read image: {args.image}')
-    person_model, person_config = load_detector('person_detection')
+    person_detector = PersonDetector()
     bib_model, bib_config = load_detector('bib_detection')
-    if person_model.names.get(0) != 'person' or bib_model.names != {0: 'bib-number'}:
-        raise ValueError('Expected a COCO person detector and a trained bib-number detector')
-    boxes = detect_bibs(image, person_model, bib_model, person_config, bib_config)
+    if bib_model.names != {0: 'bib-number'}:
+        raise ValueError('Expected a trained bib-number detector')
+    boxes = detect_bibs(image, person_detector, bib_model, bib_config)
     bib_crops = []
     for x1, y1, x2, y2, _ in boxes.tolist():
         bib_crops.append(image[max(0, math.floor(y1)):math.ceil(y2),

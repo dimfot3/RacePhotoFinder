@@ -41,7 +41,7 @@ python infer.py path/to/photo.jpg
 python infer.py path/to/photo.jpg --output result.jpg --no-show
 ```
 
-The root script reads both detection configs, uses YOLO26s for people and the
+The root script uses RF-DETR (`person_detection/`) for people and the
 trained bib `best.pt` for person crops, and displays the final bib boxes on the
 original image. Bib confidence is configured as 0.43 from validation.
 

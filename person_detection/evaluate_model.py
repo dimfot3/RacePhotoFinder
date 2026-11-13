@@ -1,4 +1,4 @@
-"""Compare YOLO26 person coverage of bib labels, full images versus 2x2 tiles."""
+"""Compare RF-DETR person coverage of bib labels, full images versus 2x2 tiles."""
 from __future__ import annotations
 
 import argparse
@@ -11,17 +11,16 @@ import time
 from collections import defaultdict
 
 HERE = Path(__file__).resolve().parent
-if (HERE / '.deps').is_dir():
-    sys.path.insert(0, str(HERE / '.deps'))
-os.environ.setdefault('YOLO_CONFIG_DIR', '/tmp/race-person-yolo')
+sys.path.insert(0, str(HERE.parent))
 os.environ.setdefault('MPLCONFIGDIR', '/tmp/race-person-matplotlib')
 
 import cv2
 import torch
 import yaml
 from torchvision.ops import nms
-from ultralytics import YOLO
-import ultralytics
+from importlib.metadata import version
+
+from person_detection.detector import PersonDetector
 
 
 def tile_bounds(width, height, overlap):
@@ -74,12 +73,12 @@ def evaluate(model, folder, images, annotations, config, tiled):
             for x1, y1, x2, y2 in bounds:
                 sources.append(frame[y1:y2, x1:x2].copy())
                 metadata.append((image['id'], x1, y1))
-        results = model.predict(sources, imgsz=config['imgsz'], batch=config['batch'],
-                                rect=False, device=config['device'], classes=[0],
-                                conf=config['confidence'], max_det=config['max_det'], verbose=False)
+        results = []
+        for offset in range(0, len(sources), config['batch']):
+            results.extend(model.predict(sources[offset:offset+config['batch']]))
         per_image = defaultdict(list)
         for result, (image_id, x, y) in zip(results, metadata):
-            boxes = result.boxes.data.cpu().clone()
+            boxes = torch.from_numpy(result).clone()
             boxes[:, [0, 2]] += x
             boxes[:, [1, 3]] += y
             per_image[image_id].append(boxes)
@@ -132,14 +131,12 @@ def main():
     weights.parent.mkdir(parents=True, exist_ok=True)
     if str(config['device']) != 'cpu' and not torch.cuda.is_available():
         raise RuntimeError('CUDA requested but unavailable')
-    model = YOLO(str(weights))
-    if model.names[0] != 'person':
-        raise ValueError('Expected COCO pretrained model with class 0 person')
-    report = {'weights': str(weights), 'dataset': str(dataset), 'ultralytics': ultralytics.__version__,
+    model = PersonDetector(args.config)
+    report = {'weights': str(weights), 'dataset': str(dataset), 'rfdetr': version('rfdetr'),
               'config': config, 'criterion': 'entire annotated bib-number box contained in any detected person box',
               'limitation': 'Bib coverage only: person precision cannot be measured without person annotations.',
               'splits': {}}
-    print(f'Weights: {weights}\nDevice: {config["device"]}\nImage size: {config["imgsz"]}', flush=True)
+    print(f'Weights: {weights}\nDevice: {model.device}\nModel: {config["model"]}', flush=True)
     for split in args.splits or config['splits']:
         folder, images, annotations = load_split(dataset, split, args.max_images)
         report['splits'][split] = {}

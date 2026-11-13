@@ -62,3 +62,6 @@ thumbnails/
 /bib_detection/runs/bib_yolo26s/weights/*
 !/bib_detection/runs/bib_yolo26s/weights/best.pt
 
+
+# RF-DETR downloads its official COCO checkpoint here on first use (MD5-verified).
+/person_detection/weights/*.pth

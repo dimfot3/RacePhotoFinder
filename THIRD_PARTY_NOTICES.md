@@ -7,12 +7,9 @@ below. Those components remain subject to their respective upstream terms.
 
 ## Ultralytics YOLO26
 
-Race Photo Finder uses Ultralytics YOLO26 models for person and bib detection.
+Race Photo Finder uses Ultralytics YOLO26 models for bib detection.
 The relevant files include:
 
-- `weights/yolo26n.pt`
-- `person_detection/weights/yolo26n.pt`
-- `person_detection/weights/yolo26s.pt`
 - `bib_detection/weights/yolo26s.pt`
 - `bib_detection/runs/bib_yolo26s/weights/best.pt`
 
@@ -27,6 +24,25 @@ not granted by this repository.
 - Model documentation: https://docs.ultralytics.com/models/yolo26/
 - Licensing: https://docs.ultralytics.com/#yolo-licenses-how-is-ultralytics-yolo-licensed
 - AGPL-3.0 text: https://www.gnu.org/licenses/agpl-3.0.html
+
+## Roboflow RF-DETR
+
+Person detection uses the `rfdetr` package and its official COCO-pretrained
+RF-DETR Medium checkpoint. The checkpoint is not stored in this repository:
+`rfdetr` downloads it to `person_detection/weights/rf-detr-medium.pth` on first
+use and verifies its MD5 hash.
+
+- `person_detection/weights/rf-detr-medium.pth`
+  - SHA-256: `749ff6071828aaffac63e204c4f4135ed3d6cdae4d702e086c360edc3b5768c8`
+- License: Apache License 2.0 for the `rfdetr` code and the Nano, Small,
+  Medium, and Large detection checkpoints. Included text:
+  `licenses/RF-DETR-Apache-2.0.txt`
+- The Atto, Femto, Pico, XLarge, and 2XLarge checkpoints are under Roboflow's
+  Platform Model License instead; `person_detection/detector.py` refuses them.
+- Project: https://github.com/roboflow/rf-detr
+
+The COCO-pretrained checkpoint was trained on the COCO dataset, whose images
+carry their own Flickr license terms.
 
 ## OpenCV Zoo YuNet and SFace
 

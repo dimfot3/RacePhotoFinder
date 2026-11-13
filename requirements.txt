@@ -1,4 +1,5 @@
 -r database_core/requirements.txt
+-r person_detection/requirements.txt
 -r face_detection/requirements.txt
 -r face_matching/requirements.txt
 -r ui/requirements.txt

@@ -29,8 +29,9 @@ prevents one uncertain match from influencing later matches.
 
 ### 1. Clone the repository with its models
 
-The person detector, bib detector, OCR, and face models are included through
-[Git LFS](https://git-lfs.com). Install Git LFS before cloning:
+The bib detector, OCR, and face models are included through
+[Git LFS](https://git-lfs.com). The RF-DETR person detector downloads its
+official checkpoint automatically on first run. Install Git LFS before cloning:
 
 ```bash
 git lfs install
