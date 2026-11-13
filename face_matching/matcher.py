@@ -98,7 +98,10 @@ def decode_embedding(blob, config_path=DEFAULT_CONFIG):
     embedding = np.frombuffer(blob, dtype="<f4").copy()
     expected = int(config["embedding_dimension"])
     if embedding.size != expected:
-        raise ValueError(f"Stored embedding has {embedding.size} values; expected {expected}")
+        raise ValueError(
+            f"Stored embedding has {embedding.size} values; expected {expected}. "
+            "It was created by a different face model; re-import the event with --rerun."
+        )
     return _normalize(embedding)
 
 

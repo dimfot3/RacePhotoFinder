@@ -1,53 +1,60 @@
 # Bib-number detection on person crops
 
-Start with COCO-pretrained **YOLO26s**, fine-tuned as one `bib-number` class on
-`datasets/person_cropped_images`. Images remain at original crop resolution on
-disk; Ultralytics resizes and pads during training. Defaults: input 640, batch 8,
-50 epochs, early stopping patience 10, CUDA device 0. Edit `config.yaml` to change.
+Starts from COCO-pretrained **RF-DETR Medium** (Apache 2.0) and fine-tunes it as
+one `bib-number` class on `datasets/person_cropped_images`. Defaults: 50 epochs
+with early stopping (patience 10), batch 4 × 4 gradient-accumulation steps
+(effective batch 16), CUDA. Edit `config.yaml` to change.
+
+## Train and evaluate
 
 ```bash
+python -m pip install -r bib_detection/requirements.txt
 python bib_detection/train_model.py
 python bib_detection/evaluate_model.py
 ```
 
-For a new environment: `pip install -r bib_detection/requirements.txt`.
-A local `.deps` copy of the current Ultralytics package is provided for the
-existing environment; it supports YOLO26 without upgrading the older installation.
-The official `weights/yolo26s.pt` checkpoint downloads automatically if absent.
-Training adapts the COCO detector to the bib class; it does not start from random weights.
+Training links the original crops into `.rfdetr_dataset/` (`val` becomes
+`valid`, the layout RF-DETR expects); no images are copied or resized. Training
+uses train and valid, leaving test for the evaluation script. Checkpoints are
+written to `runs/bib_rfdetr_medium/`; the pipeline loads
+`checkpoint_best_total.pth`, which is the only file from the run kept in Git.
+Training again overwrites that directory.
 
-COCO boxes are converted to normalized YOLO labels in `.yolo_dataset` with
-symlinks to the original crop PNGs. No image copies or resizing are performed.
-Truncated boxes are included as labeled in the crop dataset.
-Use `python bib_detection/train_model.py --prepare-only` to only prepare labels.
+Useful options:
 
-Training uses train and val, leaving test for the evaluation script. Best and
-last checkpoints are saved under `runs/bib_yolo26s/weights/` on the first run.
-Ultralytics increments the run directory on subsequent runs to preserve weights;
-use `--weights path/to/best.pt` when evaluating a later run or change `weights`
-in the config.
+- `--prepare-only` only builds `.rfdetr_dataset/`.
+- `--limit 300 --epochs 4 --output-dir /tmp/bib_check` runs a quick check on a
+  subset without touching the real run directory.
+- `evaluate_model.py --weights path/to/checkpoint.pth` evaluates another run.
 
-Evaluation uses trained weights and standard bounding box IoU metrics: precision,
-recall, mAP50, and mAP50–95 on val and test. Precision/recall in Ultralytics summaries
-are selected from each split's F1 curve; mAP integrates the confidence curve.
-`evaluation_stats.json` also recommends confidence from the **val** F1 curve only.
-Per-split curves and plots are saved in `runs/evaluate_val*` and `runs/evaluate_test*`.
-These metrics measure box localization, not OCR reading accuracy.
+## Evaluation
 
-Single-photo person-to-bib inference and visualization:
+`evaluate_model.py` reports COCO mAP50, mAP50–95, mAR, and RF-DETR's best-F1
+precision/recall on val and test, and writes them to `evaluation_stats.json`.
+It also sweeps confidence on **val** only (IoU 0.5) and records the best-F1
+threshold as `recommended_confidence`. Copy that value to `confidence` in
+`config.yaml`. These metrics measure box localization, not OCR reading accuracy.
+
+Previous YOLO26s detector, for comparison:
+
+| Split | Precision | Recall | mAP50 | mAP50–95 |
+|---|---|---|---|---|
+| val | 0.972 | 0.873 | 0.935 | 0.664 |
+| test | 0.961 | 0.896 | 0.945 | 0.730 |
+
+## Inference
 
 ```bash
 python infer.py path/to/photo.jpg
 python infer.py path/to/photo.jpg --output result.jpg --no-show
 ```
 
-The root script reads both detection configs, uses YOLO26s for people and the
-trained bib `best.pt` for person crops, and displays the final bib boxes on the
-original image. Bib confidence is configured as 0.43 from validation.
+`detector.py` provides `BibDetector.predict(crops, confidence=None, max_det=None)`,
+which returns one `[x1, y1, x2, y2, confidence]` array per BGR person crop.
 
 Folder imports use a bounded fallback when a person crop has no valid bib at
 the normal threshold. The fallback detector threshold, stricter OCR threshold,
 and maximum candidates are configured in `config.yaml`. At most one bib is
 retained per person crop, selected by combined detection and OCR confidence.
 
-Model documentation: https://docs.ultralytics.com/models/yolo26/
+Model reference: https://github.com/roboflow/rf-detr

@@ -1,11 +1,12 @@
 dataset: ../datasets/bib number labeling.coco
-weights: weights/yolo26s.pt
+model: medium
+weights: weights/rf-detr-medium.pth
 output: evaluation_results.json
 splits: [val, test, train]
-device: 0
-imgsz: 640
+device: cuda
+precision: fp16
 batch: 16
-confidence: 0.25
+confidence: 0.35
 max_det: 300
 tile_overlap: 0.20
 merge_iou: 0.50

@@ -18,7 +18,7 @@ The schema contains:
   bounds, the association method (`bib`, `face`, or `manual`), and confidence.
 - `person_detections`: one auditable row for every person found in a picture;
   anonymous people remain here without creating fake participants.
-- `face_embeddings`: one normalized ArcFace embedding for each suitable face,
+- `face_embeddings`: one normalized SFace embedding for each suitable face,
   connected to its person detection.
 
 Imports also create cached JPEG thumbnails under `database_core/thumbnails/`.
@@ -48,8 +48,8 @@ models are loaded, and automatically halves/retries a batch after CUDA OOM.
 Bib detection and OCR keep their existing bounded crop batches. These settings
 are configurable in `database_core/config.yaml`.
 
-During the first pass, SCRFD detects a face inside every person crop and
-ArcFace creates a five-point-aligned, normalized 512-value embedding. After all
+During the first pass, YuNet detects a face inside every person crop and
+SFace creates a five-point-aligned, normalized 128-value embedding. After all
 photos finish, the importer builds participant templates only from
 bib-confirmed faces and runs conservative cosine matching over suitable
 anonymous faces. Face-derived matches never feed back into the templates.

@@ -1,28 +1,35 @@
 {
-  "weights": "bib_detection/runs/bib_yolo26s/weights/best.pt",
-  "dataset": "datasets/person_cropped_images",
-  "imgsz": 640,
+  "weights": "/home/visitor3/workspace/RacePhotoFinder/bib_detection/runs/bib_rfdetr_medium/checkpoint_best_total.pth",
+  "dataset": "/home/visitor3/workspace/RacePhotoFinder/datasets/person_cropped_images",
+  "model": "medium",
+  "resolution": 576,
   "splits": {
     "val": {
-      "metrics/precision(B)": 0.9716787833034766,
-      "metrics/recall(B)": 0.8725017229496899,
-      "metrics/mAP50(B)": 0.9350524644106014,
-      "metrics/mAP50-95(B)": 0.6637818102135183,
-      "fitness": 0.6637818102135183
+      "mAP_50_95": 0.6905583739280701,
+      "mAP_50": 0.9534826278686523,
+      "mAP_75": 0.7656058669090271,
+      "mAR": 0.7696760892868042,
+      "F1": 0.9331934452056885,
+      "precision": 0.9474431872367859,
+      "recall": 0.9193659424781799
     },
     "test": {
-      "metrics/precision(B)": 0.9607521489912306,
-      "metrics/recall(B)": 0.8958868894601543,
-      "metrics/mAP50(B)": 0.9453141283023038,
-      "metrics/mAP50-95(B)": 0.7303499644191229,
-      "fitness": 0.7303499644191229
+      "loss": 4.24999475479126,
+      "mAP_50_95": 0.7622432708740234,
+      "mAP_50": 0.9695855379104614,
+      "mAP_75": 0.8225644826889038,
+      "mAR": 0.819665789604187,
+      "F1": 0.9518151879310608,
+      "precision": 0.9782903790473938,
+      "recall": 0.9267352223396301
     }
   },
   "recommended_confidence": {
     "based_on": "val",
-    "confidence": 0.4274274274274274,
-    "precision": 0.9673708489033294,
-    "recall": 0.8785941331798834,
-    "f1": 0.9208477524817916
+    "iou": 0.5,
+    "confidence": 0.4875415563583374,
+    "precision": 0.9695619896065331,
+    "recall": 0.9000689179875948,
+    "f1": 0.9335239456754826
   }
 }

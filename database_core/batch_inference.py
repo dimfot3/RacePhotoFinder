@@ -9,9 +9,10 @@ import torch
 import yaml
 
 from bib_ocr import BibOCRInferer
-from face_detection import SCRFDFaceDetector
-from face_matching.embedder import ArcFaceEmbedder
-from infer import load_detector
+from face_detection import YuNetFaceDetector
+from face_matching.embedder import SFaceEmbedder
+from bib_detection.detector import BibDetector
+from person_detection.detector import PersonDetector
 
 
 CONFIG_PATH = Path(__file__).resolve().parent / "config.yaml"
@@ -117,11 +118,12 @@ class BatchedInferencePipeline:
 
     def __init__(self, config_path=CONFIG_PATH):
         config = yaml.safe_load(Path(config_path).read_text())["inference"]
-        self.person_model, self.person_config = load_detector("person_detection")
-        self.bib_model, self.bib_config = load_detector("bib_detection")
+        self.person_detector = PersonDetector()
+        self.bib_detector = BibDetector()
+        self.bib_config = self.bib_detector.config
         self.ocr_inferer = BibOCRInferer()
-        self.face_detector = SCRFDFaceDetector()
-        self.face_embedder = ArcFaceEmbedder()
+        self.face_detector = YuNetFaceDetector()
+        self.face_embedder = SFaceEmbedder()
         self.bib_fallback_confidence = float(
             self.bib_config["fallback_confidence"]
         )
@@ -139,8 +141,8 @@ class BatchedInferencePipeline:
             raise ValueError("Bib max candidates per person must be positive")
         self.cuda_enabled = (
             torch.cuda.is_available()
-            and self.person_config.get("device") != "cpu"
-            and self.bib_config.get("device") != "cpu"
+            and self.person_detector.device != "cpu"
+            and self.bib_detector.device != "cpu"
         )
         if self.cuda_enabled:
             self._warm_cuda_models()
@@ -163,23 +165,8 @@ class BatchedInferencePipeline:
     def _warm_cuda_models(self):
         """Move both models to CUDA before calculating the free-memory budget."""
         dummy = np.zeros((640, 640, 3), dtype=np.uint8)
-        self.person_model.predict(
-            dummy,
-            classes=[0],
-            imgsz=self.person_config["imgsz"],
-            conf=self.person_config["confidence"],
-            device=self.person_config["device"],
-            max_det=1,
-            verbose=False,
-        )
-        self.bib_model.predict(
-            dummy,
-            imgsz=self.bib_config["imgsz"],
-            conf=self.bib_config["confidence"],
-            device=self.bib_config["device"],
-            max_det=1,
-            verbose=False,
-        )
+        self.person_detector.predict([dummy])
+        self.bib_detector.predict([dummy], max_det=1)
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
@@ -188,17 +175,7 @@ class BatchedInferencePipeline:
         if not images:
             return []
         self.batcher.begin_measurement()
-        people_results = self.person_model.predict(
-            images,
-            classes=[0],
-            imgsz=self.person_config["imgsz"],
-            conf=self.person_config["confidence"],
-            device=self.person_config["device"],
-            max_det=self.person_config["max_det"],
-            batch=len(images),
-            rect=False,
-            verbose=False,
-        )
+        people_results = self.person_detector.predict(images)
         self.batcher.finish_measurement(len(images))
 
         inference_by_image = [ImageInference() for _ in images]
@@ -206,7 +183,7 @@ class BatchedInferencePipeline:
         person_locations = []
         for image_index, (image, result) in enumerate(zip(images, people_results)):
             height, width = image.shape[:2]
-            for x1, y1, x2, y2, confidence in result.boxes.data[:, :5].cpu().tolist():
+            for x1, y1, x2, y2, confidence in result.tolist():
                 x1, y1 = max(0, math.floor(x1)), max(0, math.floor(y1))
                 x2, y2 = min(width, math.ceil(x2)), min(height, math.ceil(y2))
                 if x2 > x1 and y2 > y1:
@@ -277,16 +254,10 @@ class BatchedInferencePipeline:
         min_ocr_confidence,
     ):
         """OCR a bounded candidate set and retain at most one bib per person."""
-        predictions = self.bib_model.predict(
+        predictions = self.bib_detector.predict(
             person_crops,
-            imgsz=self.bib_config["imgsz"],
-            conf=confidence,
-            device=self.bib_config["device"],
-            batch=self.bib_config["batch"],
+            confidence=confidence,
             max_det=self.bib_max_candidates,
-            rect=False,
-            stream=True,
-            verbose=False,
         )
 
         bib_crops = []
@@ -296,7 +267,7 @@ class BatchedInferencePipeline:
         ):
             image_index, person_index, offset_x, offset_y = location
             height, width = crop.shape[:2]
-            detections = result.boxes.data[:, :5].cpu().tolist()
+            detections = result.tolist()
             for local_box in detections[: self.bib_max_candidates]:
                 x1, y1, x2, y2, detection_confidence = local_box
                 left, top = max(0, math.floor(x1)), max(0, math.floor(y1))

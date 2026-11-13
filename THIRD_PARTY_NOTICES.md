@@ -5,54 +5,50 @@ Race Photo Finder source code. It does not replace or alter the licenses of the
 third-party software, pretrained models, datasets, or other materials described
 below. Those components remain subject to their respective upstream terms.
 
-## Ultralytics YOLO26
+## Roboflow RF-DETR
 
-Race Photo Finder uses Ultralytics YOLO26 models for person and bib detection.
-The relevant files include:
+Person and bib detection use the `rfdetr` package and its official
+COCO-pretrained RF-DETR Medium checkpoint. The checkpoint is not stored in this
+repository: `rfdetr` downloads it to `person_detection/weights/rf-detr-medium.pth`
+on first use and verifies its MD5 hash.
 
-- `weights/yolo26n.pt`
-- `person_detection/weights/yolo26n.pt`
-- `person_detection/weights/yolo26s.pt`
-- `bib_detection/weights/yolo26s.pt`
-- `bib_detection/runs/bib_yolo26s/weights/best.pt`
+The bib detector, `bib_detection/runs/bib_rfdetr_medium/checkpoint_best_total.pth`,
+is fine-tuned from that checkpoint. Rights in the dataset used to fine-tune it
+are separate and are not granted by this repository.
 
-The final file is a fine-tuned derivative of the YOLO26s checkpoint. Ultralytics
-offers its software and models under AGPL-3.0 and a separate Enterprise
-license. This repository uses the AGPL-3.0 option. Users who cannot satisfy the
-AGPL-3.0 requirements must obtain appropriate authorization from Ultralytics.
-Rights in the dataset used to fine-tune the bib detector are separate and are
-not granted by this repository.
+- `person_detection/weights/rf-detr-medium.pth`
+  - SHA-256: `749ff6071828aaffac63e204c4f4135ed3d6cdae4d702e086c360edc3b5768c8`
+- License: Apache License 2.0 for the `rfdetr` code and the Nano, Small,
+  Medium, and Large detection checkpoints. Included text:
+  `licenses/RF-DETR-Apache-2.0.txt`
+- The Atto, Femto, Pico, XLarge, and 2XLarge checkpoints are under Roboflow's
+  Platform Model License instead; this project's detector code refuses them.
+- Project: https://github.com/roboflow/rf-detr
 
-- Project: https://github.com/ultralytics/ultralytics
-- Model documentation: https://docs.ultralytics.com/models/yolo26/
-- Licensing: https://docs.ultralytics.com/#yolo-licenses-how-is-ultralytics-yolo-licensed
-- AGPL-3.0 text: https://www.gnu.org/licenses/agpl-3.0.html
+The COCO-pretrained checkpoint was trained on the COCO dataset, whose images
+carry their own Flickr license terms.
 
-## InsightFace buffalo_l models
+## OpenCV Zoo YuNet and SFace
 
-The application expects these InsightFace `buffalo_l` model files locally:
+Race Photo Finder includes these official OpenCV Zoo face models:
 
-- `face_detection/weights/det_10g.onnx`
-  - SHA-256: `5838f7fe053675b1c7a08b633df49e7af5495cee0493c7dcf6697200b85b5b91`
-- `face_matching/weights/w600k_r50.onnx`
-  - SHA-256: `4c06341c33c2ca1f86781dab0e829f88ad5b64be9fba56e56bc9ebdefc619e43`
+- `face_detection/weights/face_detection_yunet_2026may.onnx` (YuNet; the
+  official re-export of the 2023mar weights with dynamic input size)
+  - SHA-256: `ebafce4e3c118d6554634be5c27ab333b4c047a9a8c3faf1d7cf93101c22f0f0`
+  - License: MIT License, Copyright (c) 2020 Shiqi Yu. Included text:
+    `licenses/YuNet-MIT.txt`
+  - Source: https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet
+  - Upstream training code: https://github.com/ShiqiYu/libfacedetection.train
+- `face_matching/weights/face_recognition_sface_2021dec.onnx` (SFace)
+  - SHA-256: `0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79`
+  - License: Apache License 2.0. Included text: `licenses/SFace-Apache-2.0.txt`
+  - Source: https://github.com/opencv/opencv_zoo/tree/main/models/face_recognition_sface
+  - Paper: https://arxiv.org/abs/2205.12010
 
-These pretrained weights are not covered by InsightFace's MIT source-code
-license. InsightFace states that its public pretrained models are available for
-non-commercial research only unless separate authorization is obtained. The
-model binaries are therefore intentionally not redistributed by this
-repository. Each user must review the upstream terms and obtain the official
-`buffalo_l` package independently.
-
-`setup_models.py` asks the user to accept these terms, downloads `buffalo_l.zip`
-directly from InsightFace's official GitHub release
-(https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip),
-and installs only the two files above after verifying the SHA-256 checksums
-listed here.
-
-- Project and license policy: https://github.com/deepinsight/insightface
-- Official model-zoo instructions: https://github.com/deepinsight/insightface/tree/master/model_zoo
-- Commercial licensing: https://www.insightface.ai/
+YuNet's upstream project states that it was trained on WIDER FACE. The SFace
+model card does not name its training dataset. Rights in third-party training
+data are separate from the model licenses above, and anyone deploying this
+software commercially should review them independently.
 
 ## PaddleOCR PP-OCRv6
 
@@ -65,6 +61,24 @@ authors.
 - Included license text: `licenses/PaddleOCR-Apache-2.0.txt`
 - Upstream license: https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
 - Model documentation: https://www.paddleocr.ai/
+
+## Bib-number training dataset
+
+The bib detector (`bib_detection/runs/bib_rfdetr_medium/checkpoint_best_total.pth`)
+was fine-tuned on person crops derived from the following dataset:
+
+- Title: "bib number labeling"
+- Creator: Marco Cheung (Roboflow Universe workspace `marco-cheung`)
+- Source: https://universe.roboflow.com/marco-cheung/bib-number-labeling
+- License: Creative Commons Attribution 4.0 International (CC BY 4.0),
+  https://creativecommons.org/licenses/by/4.0/
+
+Changes: the original images were cropped to individual people using an
+automatic person detector, bib boxes were re-expressed relative to each crop,
+and crops without a complete bib were excluded (see
+`person_detection/create_person_dataset.py`). The original train/valid/test
+split was preserved. The dataset itself is not redistributed with this
+repository.
 
 ## Datasets and user-provided media
 

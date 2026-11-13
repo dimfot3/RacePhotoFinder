@@ -4,7 +4,7 @@ from face_matching.matcher import build_templates, encode_embedding, find_match
 
 
 TEST_CONFIG = {
-    "embedding_dimension": 512,
+    "embedding_dimension": 128,
     "min_template_quality": 0.4,
     "min_match_quality": 0.4,
     "template_outlier_similarity": 0.25,
@@ -15,7 +15,7 @@ TEST_CONFIG = {
 
 
 def unit_embedding(index):
-    embedding = np.zeros(512, dtype=np.float32)
+    embedding = np.zeros(128, dtype=np.float32)
     embedding[index] = 1.0
     return embedding
 

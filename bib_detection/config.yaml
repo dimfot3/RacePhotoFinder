@@ -1,16 +1,21 @@
 dataset: ../datasets/person_cropped_images
-pretrained: weights/yolo26s.pt
-weights: runs/bib_yolo26s/weights/best.pt
-confidence: 0.43
-fallback_confidence: 0.01
+model: medium
+pretrained: ../person_detection/weights/rf-detr-medium.pth
+weights: runs/bib_rfdetr_medium/checkpoint_best_total.pth
+# Detection thresholds. Re-tune from evaluation_stats.json after training.
+confidence: 0.49
+fallback_confidence: 0.05
 fallback_ocr_confidence: 0.95
 max_candidates_per_person: 5
-imgsz: 640
 batch: 8
-device: 0
-workers: 4
+device: cuda
+precision: fp16
 train:
+  output_dir: runs/bib_rfdetr_medium
   epochs: 50
-  patience: 10
-  project: runs
-  name: bib_yolo26s
+  batch_size: 4
+  grad_accum_steps: 4
+  num_workers: 4
+  early_stopping: true
+  early_stopping_patience: 10
+  tensorboard: false
