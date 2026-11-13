@@ -5,32 +5,16 @@ Race Photo Finder source code. It does not replace or alter the licenses of the
 third-party software, pretrained models, datasets, or other materials described
 below. Those components remain subject to their respective upstream terms.
 
-## Ultralytics YOLO26
-
-Race Photo Finder uses Ultralytics YOLO26 models for bib detection.
-The relevant files include:
-
-- `bib_detection/weights/yolo26s.pt`
-- `bib_detection/runs/bib_yolo26s/weights/best.pt`
-
-The final file is a fine-tuned derivative of the YOLO26s checkpoint. Ultralytics
-offers its software and models under AGPL-3.0 and a separate Enterprise
-license. This repository uses the AGPL-3.0 option. Users who cannot satisfy the
-AGPL-3.0 requirements must obtain appropriate authorization from Ultralytics.
-Rights in the dataset used to fine-tune the bib detector are separate and are
-not granted by this repository.
-
-- Project: https://github.com/ultralytics/ultralytics
-- Model documentation: https://docs.ultralytics.com/models/yolo26/
-- Licensing: https://docs.ultralytics.com/#yolo-licenses-how-is-ultralytics-yolo-licensed
-- AGPL-3.0 text: https://www.gnu.org/licenses/agpl-3.0.html
-
 ## Roboflow RF-DETR
 
-Person detection uses the `rfdetr` package and its official COCO-pretrained
-RF-DETR Medium checkpoint. The checkpoint is not stored in this repository:
-`rfdetr` downloads it to `person_detection/weights/rf-detr-medium.pth` on first
-use and verifies its MD5 hash.
+Person and bib detection use the `rfdetr` package and its official
+COCO-pretrained RF-DETR Medium checkpoint. The checkpoint is not stored in this
+repository: `rfdetr` downloads it to `person_detection/weights/rf-detr-medium.pth`
+on first use and verifies its MD5 hash.
+
+The bib detector, `bib_detection/runs/bib_rfdetr_medium/checkpoint_best_total.pth`,
+is fine-tuned from that checkpoint. Rights in the dataset used to fine-tune it
+are separate and are not granted by this repository.
 
 - `person_detection/weights/rf-detr-medium.pth`
   - SHA-256: `749ff6071828aaffac63e204c4f4135ed3d6cdae4d702e086c360edc3b5768c8`
@@ -38,7 +22,7 @@ use and verifies its MD5 hash.
   Medium, and Large detection checkpoints. Included text:
   `licenses/RF-DETR-Apache-2.0.txt`
 - The Atto, Femto, Pico, XLarge, and 2XLarge checkpoints are under Roboflow's
-  Platform Model License instead; `person_detection/detector.py` refuses them.
+  Platform Model License instead; this project's detector code refuses them.
 - Project: https://github.com/roboflow/rf-detr
 
 The COCO-pretrained checkpoint was trained on the COCO dataset, whose images
@@ -48,8 +32,9 @@ carry their own Flickr license terms.
 
 Race Photo Finder includes these official OpenCV Zoo face models:
 
-- `face_detection/weights/face_detection_yunet_2023mar.onnx` (YuNet)
-  - SHA-256: `8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4`
+- `face_detection/weights/face_detection_yunet_2026may.onnx` (YuNet; the
+  official re-export of the 2023mar weights with dynamic input size)
+  - SHA-256: `ebafce4e3c118d6554634be5c27ab333b4c047a9a8c3faf1d7cf93101c22f0f0`
   - License: MIT License, Copyright (c) 2020 Shiqi Yu. Included text:
     `licenses/YuNet-MIT.txt`
   - Source: https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet
@@ -76,6 +61,24 @@ authors.
 - Included license text: `licenses/PaddleOCR-Apache-2.0.txt`
 - Upstream license: https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
 - Model documentation: https://www.paddleocr.ai/
+
+## Bib-number training dataset
+
+The bib detector (`bib_detection/runs/bib_rfdetr_medium/checkpoint_best_total.pth`)
+was fine-tuned on person crops derived from the following dataset:
+
+- Title: "bib number labeling"
+- Creator: Marco Cheung (Roboflow Universe workspace `marco-cheung`)
+- Source: https://universe.roboflow.com/marco-cheung/bib-number-labeling
+- License: Creative Commons Attribution 4.0 International (CC BY 4.0),
+  https://creativecommons.org/licenses/by/4.0/
+
+Changes: the original images were cropped to individual people using an
+automatic person detector, bib boxes were re-expressed relative to each crop,
+and crops without a complete bib were excluded (see
+`person_detection/create_person_dataset.py`). The original train/valid/test
+split was preserved. The dataset itself is not redistributed with this
+repository.
 
 ## Datasets and user-provided media
 

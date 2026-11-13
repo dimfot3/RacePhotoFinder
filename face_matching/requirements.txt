@@ -1,3 +1,4 @@
+onnxruntime-gpu>=1.21,<2
 opencv-python>=4.8,<6
 numpy
 PyYAML>=6,<7

@@ -1,4 +1,4 @@
-model: weights/face_detection_yunet_2023mar.onnx
+model: weights/face_detection_yunet_2026may.onnx
 max_input_size: 640
 confidence: 0.50
 nms_threshold: 0.30

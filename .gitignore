@@ -52,15 +52,13 @@ thumbnails/
 
 # Generated ML artifacts
 **/runs/*
-**/.yolo_dataset/
+**/.rfdetr_dataset/
 **/evaluation_results.json
 
 # Keep only the deployable fine-tuned bib checkpoint from training runs.
-!/bib_detection/runs/bib_yolo26s/
-/bib_detection/runs/bib_yolo26s/*
-!/bib_detection/runs/bib_yolo26s/weights/
-/bib_detection/runs/bib_yolo26s/weights/*
-!/bib_detection/runs/bib_yolo26s/weights/best.pt
+!/bib_detection/runs/bib_rfdetr_medium/
+/bib_detection/runs/bib_rfdetr_medium/*
+!/bib_detection/runs/bib_rfdetr_medium/checkpoint_best_total.pth
 
 
 # RF-DETR downloads its official COCO checkpoint here on first use (MD5-verified).

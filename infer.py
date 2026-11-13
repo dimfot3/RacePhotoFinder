@@ -3,36 +3,20 @@ import argparse
 import math
 import os
 from pathlib import Path
-import sys
 
 ROOT = Path(__file__).resolve().parent
-if (ROOT / 'bib_detection/.deps').is_dir():
-    sys.path.insert(0, str(ROOT / 'bib_detection/.deps'))
-os.environ.setdefault('YOLO_CONFIG_DIR', '/tmp/race-infer-yolo')
 os.environ.setdefault('MPLCONFIGDIR', '/tmp/race-infer-matplotlib')
 
 import cv2
 import torch
-import yaml
 from torchvision.ops import nms
-from ultralytics import YOLO
 
+from bib_detection.detector import BibDetector
 from bib_ocr import BibOCRInferer
 from person_detection.detector import PersonDetector
 
 
-def load_detector(folder):
-    config = yaml.safe_load((ROOT / folder / 'config.yaml').read_text())
-    if config.get('device') != 'cpu' and not torch.cuda.is_available():
-        config['device'] = 'cpu'
-    weights = (ROOT / folder / config['weights']).resolve()
-    if not weights.is_file():
-        raise FileNotFoundError(f'Model weights not found: {weights}')
-    print(f'{folder}: {weights}, confidence={config["confidence"]}')
-    return YOLO(str(weights)), config
-
-
-def detect_bibs(image, person_detector, bib_model, bib_config):
+def detect_bibs(image, person_detector, bib_detector):
     """Return original-image [x1, y1, x2, y2, confidence] bib detections."""
     height, width = image.shape[:2]
     people = person_detector.predict([image])[0]
@@ -45,12 +29,9 @@ def detect_bibs(image, person_detector, bib_model, bib_config):
             offsets.append((x1, y1))
     if not crops:
         return torch.empty((0, 5))
-    predictions = bib_model.predict(crops, imgsz=bib_config['imgsz'], conf=bib_config['confidence'],
-                                    device=bib_config['device'], batch=bib_config['batch'],
-                                    rect=False, stream=True, verbose=False)
     boxes = []
-    for result, (x, y) in zip(predictions, offsets):
-        detections = result.boxes.data[:, :5].cpu().clone()
+    for result, (x, y) in zip(bib_detector.predict(crops), offsets):
+        detections = torch.from_numpy(result)
         detections[:, [0, 2]] += x
         detections[:, [1, 3]] += y
         boxes.append(detections)
@@ -68,10 +49,8 @@ def main():
     if image is None:
         parser.error(f'Cannot read image: {args.image}')
     person_detector = PersonDetector()
-    bib_model, bib_config = load_detector('bib_detection')
-    if bib_model.names != {0: 'bib-number'}:
-        raise ValueError('Expected a trained bib-number detector')
-    boxes = detect_bibs(image, person_detector, bib_model, bib_config)
+    bib_detector = BibDetector()
+    boxes = detect_bibs(image, person_detector, bib_detector)
     bib_crops = []
     for x1, y1, x2, y2, _ in boxes.tolist():
         bib_crops.append(image[max(0, math.floor(y1)):math.ceil(y2),

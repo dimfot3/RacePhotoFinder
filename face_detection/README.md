@@ -6,8 +6,12 @@ and results are mapped back to crop coordinates. It returns the face box,
 confidence, and five facial landmarks used for alignment. Settings live in
 `config.yaml`.
 
-The weight `weights/face_detection_yunet_2023mar.onnx` is stored with Git LFS.
+The weight `weights/face_detection_yunet_2026may.onnx` is stored with Git LFS.
 It is the official OpenCV Zoo release, licensed under the MIT License
-(`../licenses/YuNet-MIT.txt`). Inference runs through OpenCV's DNN module; the
-CUDA backend is used when `device` is not `cpu` and OpenCV was built with CUDA,
-otherwise it runs on CPU.
+(`../licenses/YuNet-MIT.txt`).
+
+Inference runs with ONNX Runtime. When `device` is not `cpu`, the CUDA
+execution provider is tried first and CPU is the fallback; the startup log
+prints which one is active. `onnxruntime-gpu` needs CUDA 12 and cuDNN 9, from a
+system install or NVIDIA's pip packages. The box decoding and NMS reproduce
+OpenCV's `FaceDetectorYN` exactly.

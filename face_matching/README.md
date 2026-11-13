@@ -20,6 +20,11 @@ The weight `weights/face_recognition_sface_2021dec.onnx` is stored with Git LFS.
 It is the official OpenCV Zoo release, licensed under the Apache License 2.0
 (`../licenses/SFace-Apache-2.0.txt`).
 
+It runs with ONNX Runtime, using the CUDA execution provider when available
+and CPU otherwise. Faces are aligned to the standard 112x112 five-point
+template with the same least-squares similarity transform as OpenCV's
+`FaceRecognizerSF.alignCrop`, so embeddings match OpenCV's.
+
 The similarity thresholds in `config.yaml` are set for SFace, which scores
 differently from ArcFace. Re-tune them on real event photos. Embeddings from a
 different face model cannot be compared, so re-import existing events with

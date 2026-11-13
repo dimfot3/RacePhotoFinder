@@ -4,6 +4,7 @@ weights: weights/rf-detr-medium.pth
 output: evaluation_results.json
 splits: [val, test, train]
 device: cuda
+precision: fp16
 batch: 16
 confidence: 0.35
 max_det: 300

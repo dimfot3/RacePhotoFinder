@@ -47,8 +47,10 @@ class PersonDetector:
             pretrain_weights=str(weights),
             device=self.device,
         )
+        self.predictor = _predictor(self.model, self.device, self.config.get("precision"))
+        self.predictor_dtype = self.predictor.dtype_name
         print(f"RF-DETR person detection: {size}, {weights}, device={self.device}, "
-              f"confidence={self.confidence}")
+              f"precision={self.predictor_dtype}, confidence={self.confidence}")
 
     def predict(self, images):
         """Return one float32 (N, 5) array per BGR image, highest confidence first."""
@@ -56,7 +58,7 @@ class PersonDetector:
         if not images:
             return []
         rgb = [cv2.cvtColor(image, cv2.COLOR_BGR2RGB) for image in images]
-        detections = self.model.predict(
+        detections = self.predictor.predict(
             rgb, threshold=self.confidence, include_source_image=False
         )
         if not isinstance(detections, list):
@@ -75,6 +77,18 @@ class PersonDetector:
             order = np.argsort(-boxes[:, 4], kind="stable")[: self.max_det]
             results.append(boxes[order])
         return results
+
+
+def _predictor(model, device, precision):
+    """Optimized RF-DETR predictor with a flexible batch size.
+
+    `compile=False` keeps variable batch sizes (the importer adapts them);
+    float16 halves GPU latency and is only used on CUDA.
+    """
+    dtype = "float16" if device == "cuda" and str(precision).lower() in ("fp16", "float16") else "float32"
+    predictor = model.inference(compile=False, dtype=dtype)
+    predictor.dtype_name = dtype
+    return predictor
 
 
 def _device(device):
