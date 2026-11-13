@@ -1,4 +1,4 @@
-rfdetr[train]>=1.12,<2
+rfdetr>=1.12,<2
 opencv-python>=4.8,<6
 numpy
 PyYAML>=6,<7

@@ -7,8 +7,11 @@ with early stopping (patience 10), batch 4 × 4 gradient-accumulation steps
 
 ## Train and evaluate
 
+Training needs the extra packages in `requirements-train.txt`; inference
+only needs `requirements.txt`.
+
 ```bash
-python -m pip install -r bib_detection/requirements.txt
+python -m pip install -r bib_detection/requirements-train.txt
 python bib_detection/train_model.py
 python bib_detection/evaluate_model.py
 ```
