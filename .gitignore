@@ -44,7 +44,8 @@ build/
 dist/
 *.egg-info/
 
-# Local databases and generated thumbnails
+# Local databases, generated thumbnails, and per-event data
+/data/
 *.db
 *.db-shm
 *.db-wal

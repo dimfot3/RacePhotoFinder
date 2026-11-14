@@ -2,28 +2,19 @@
 
 import csv
 import hashlib
-import os
 from pathlib import Path
 import sqlite3
 from urllib.parse import urlparse
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+from database_core.events import PROJECT_ROOT, Event
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
-THUMBNAIL_DIR = Path(__file__).resolve().parent / "thumbnails"
 THUMBNAIL_MAX_SIZE = 640
 
 
-def database_path():
-    configured_path = os.environ.get("DATABASE_PATH")
-    if configured_path:
-        return Path(configured_path).expanduser().resolve()
-    return Path(__file__).resolve().parent / "race_photo_finder.db"
-
-
-def connect_database():
-    path = database_path()
+def connect_database(event):
+    path = event.database_path
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path)
     connection.row_factory = sqlite3.Row
@@ -31,8 +22,9 @@ def connect_database():
     return connection
 
 
-def initialize_database():
-    with connect_database() as connection:
+def initialize_database(event):
+    event.ensure_settings()
+    with connect_database(event) as connection:
         connection.executescript(SCHEMA_PATH.read_text())
         picture_columns = {
             row["name"]
@@ -60,7 +52,7 @@ def initialize_database():
             )
 
 
-def find_participant_pictures(bib):
+def find_participant_pictures(event, bib):
     """Return participant details and associated pictures for an exact bib."""
     query = """
         SELECT
@@ -80,19 +72,23 @@ def find_participant_pictures(bib):
         WHERE participant.bib = ?
         ORDER BY picture.id
     """
-    with connect_database() as connection:
+    with connect_database(event) as connection:
         return connection.execute(query, (bib,)).fetchall()
 
 
-def find_participant_search_results(bib):
-    """Return confirmed bib photos and non-mutating face suggestions."""
+def find_participant_search_results(event, bib, include_faces=True):
+    """Return confirmed bib photos and non-mutating face suggestions.
+
+    With ``include_faces=False`` only bib-confirmed (and manual) photos are
+    returned, even if the event database still holds face embeddings.
+    """
     from face_matching.matcher import (
         build_templates,
         decode_embedding,
         load_config,
     )
 
-    with connect_database() as connection:
+    with connect_database(event) as connection:
         participant = connection.execute(
             """
             SELECT id, bib, name, email, net_finish_time
@@ -122,6 +118,8 @@ def find_participant_search_results(bib):
         ).fetchall()
         confirmed = [dict(row) for row in confirmed_rows]
         confirmed_ids = {row["picture_id"] for row in confirmed}
+        if not include_faces:
+            return dict(participant), confirmed, []
 
         reference_rows = connection.execute(
             """
@@ -180,8 +178,8 @@ def find_participant_search_results(bib):
     return dict(participant), confirmed, possible
 
 
-def find_picture(picture_id):
-    with connect_database() as connection:
+def find_picture(event, picture_id):
+    with connect_database(event) as connection:
         row = connection.execute(
             "SELECT id, full_path, thumbnail_path FROM pictures WHERE id = ?",
             (picture_id,),
@@ -196,19 +194,24 @@ def local_path(full_path):
     return path.resolve()
 
 
-def create_thumbnail(image_path, image=None):
-    """Create or refresh a small JPEG preview without changing the original."""
+def create_thumbnail(event, image_path, image=None):
+    """Create or refresh a small JPEG preview without changing the original.
+
+    Returns the file name relative to the event's thumbnail folder, so the
+    event folder can be moved or uploaded as a whole.
+    """
     import cv2
 
     image_path = Path(image_path).resolve()
-    THUMBNAIL_DIR.mkdir(parents=True, exist_ok=True)
+    event.thumbnail_dir.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256(str(image_path).encode()).hexdigest()[:24]
-    thumbnail_path = THUMBNAIL_DIR / f"{digest}.jpg"
+    thumbnail_name = f"{digest}.jpg"
+    thumbnail_path = event.thumbnail_dir / thumbnail_name
     if (
         thumbnail_path.is_file()
         and thumbnail_path.stat().st_mtime >= image_path.stat().st_mtime
     ):
-        return thumbnail_path.resolve()
+        return thumbnail_name
 
     if image is None:
         image = cv2.imread(str(image_path))
@@ -224,7 +227,7 @@ def create_thumbnail(image_path, image=None):
         )
     if not cv2.imwrite(str(thumbnail_path), image, [cv2.IMWRITE_JPEG_QUALITY, 82]):
         raise OSError(f"Could not write thumbnail: {thumbnail_path}")
-    return thumbnail_path.resolve()
+    return thumbnail_name
 
 
 def read_participant_csv(csv_path):
@@ -285,8 +288,14 @@ def import_participant_csv(connection, csv_path):
     print(f"Imported {len(participants)} participant row(s) from {csv_path}")
 
 
-def save_picture_results(connection, image_path, thumbnail_path, inference):
-    """Persist every person, face embedding, and bib-confirmed association."""
+def save_picture_results(
+    connection, image_path, thumbnail_name, inference, store_faces=True
+):
+    """Persist every person, face embedding, and bib-confirmed association.
+
+    With ``store_faces=False`` (face matching disabled for the event) no face
+    embeddings are written at all.
+    """
     from face_matching.matcher import encode_embedding, load_config
 
     face_config = load_config()
@@ -299,7 +308,7 @@ def save_picture_results(connection, image_path, thumbnail_path, inference):
             ON CONFLICT (full_path) DO UPDATE SET
                 thumbnail_path = EXCLUDED.thumbnail_path
             """,
-            (str(image_path.resolve()), str(thumbnail_path.resolve())),
+            (str(image_path.resolve()), thumbnail_name),
         )
         picture_id = connection.execute(
             "SELECT id FROM pictures WHERE full_path = ?",
@@ -359,7 +368,7 @@ def save_picture_results(connection, image_path, thumbnail_path, inference):
             )
             person_detection_id = cursor.lastrowid
 
-            if person.face is not None:
+            if store_faces and person.face is not None:
                 fx1, fy1, fx2, fy2 = person.face.box
                 connection.execute(
                     """
@@ -529,11 +538,10 @@ def run_face_matching(connection):
     return matched
 
 
-def reset_database():
-    """Delete the current event records and their generated thumbnails."""
-    initialize_database()
-    thumbnail_root = THUMBNAIL_DIR.resolve()
-    with connect_database() as connection:
+def reset_database(event):
+    """Delete this event's records and its generated thumbnails."""
+    initialize_database(event)
+    with connect_database(event) as connection:
         thumbnail_rows = connection.execute(
             "SELECT thumbnail_path FROM pictures WHERE thumbnail_path IS NOT NULL"
         ).fetchall()
@@ -548,14 +556,14 @@ def reset_database():
 
     removed = 0
     for row in thumbnail_rows:
-        thumbnail_path = Path(row["thumbnail_path"]).resolve()
-        if thumbnail_path.is_relative_to(thumbnail_root) and thumbnail_path.is_file():
+        thumbnail_path = event.thumbnail_file(row["thumbnail_path"])
+        if thumbnail_path and thumbnail_path.is_file():
             thumbnail_path.unlink()
             removed += 1
-    print(f"Previous event cleared: {removed} thumbnail(s) removed.")
+    print(f"Event '{event.slug}' cleared: {removed} thumbnail(s) removed.")
 
 
-def import_photo_folder(folder, csv_path=None, rerun=False):
+def import_photo_folder(event, folder, csv_path=None, rerun=False):
     """Run the existing detection pipeline and persist results recursively."""
     folder = Path(folder).resolve()
     if not folder.is_dir():
@@ -573,7 +581,7 @@ def import_photo_folder(folder, csv_path=None, rerun=False):
 
     pipeline = BatchedInferencePipeline()
     if rerun:
-        reset_database()
+        reset_database(event)
     processed = 0
     unreadable = 0
     accepted_bibs = 0
@@ -581,8 +589,11 @@ def import_photo_folder(folder, csv_path=None, rerun=False):
     embedded_faces = 0
     face_matches = 0
 
-    initialize_database()
-    with connect_database() as connection:
+    initialize_database(event)
+    face_matching_enabled = event.settings()["face_matching"]
+    if not face_matching_enabled:
+        print(f"Face matching is disabled for '{event.slug}': no faces stored.")
+    with connect_database(event) as connection:
         if csv_path:
             import_participant_csv(connection, csv_path)
 
@@ -618,12 +629,13 @@ def import_photo_folder(folder, csv_path=None, rerun=False):
             for image_number, image_path, image, inference in zip(
                 valid_numbers, valid_paths, images, batch_results
             ):
-                thumbnail_path = create_thumbnail(image_path, image)
+                thumbnail_name = create_thumbnail(event, image_path, image)
                 people_count, face_count, bib_count = save_picture_results(
                     connection,
                     image_path,
-                    thumbnail_path,
+                    thumbnail_name,
                     inference,
+                    store_faces=face_matching_enabled,
                 )
                 processed += 1
                 detected_people += people_count
@@ -644,26 +656,27 @@ def import_photo_folder(folder, csv_path=None, rerun=False):
                 )
             cursor += chunk_size
 
-        face_matches = run_face_matching(connection)
+        if face_matching_enabled:
+            face_matches = run_face_matching(connection)
 
     print(
-        f"Import complete: {processed} picture(s), {detected_people} person "
+        f"Import of '{event.slug}' complete: {processed} picture(s), {detected_people} person "
         f"detection(s), {embedded_faces} face embedding(s), {accepted_bibs} "
         f"bib appearance(s), {face_matches} face-matched appearance(s), "
         f"{unreadable} unreadable file(s)."
     )
 
 
-def import_csv_only(csv_path):
-    initialize_database()
-    with connect_database() as connection:
+def import_csv_only(event, csv_path):
+    initialize_database(event)
+    with connect_database(event) as connection:
         import_participant_csv(connection, csv_path)
 
 
-def rebuild_thumbnails():
+def rebuild_thumbnails(event):
     """Create missing previews for pictures already stored in SQLite."""
-    initialize_database()
-    with connect_database() as connection:
+    initialize_database(event)
+    with connect_database(event) as connection:
         pictures = connection.execute(
             "SELECT id, full_path, thumbnail_path FROM pictures ORDER BY id"
         ).fetchall()
@@ -680,13 +693,13 @@ def rebuild_thumbnails():
                 skipped += 1
                 continue
             try:
-                thumbnail_path = create_thumbnail(original_path)
+                thumbnail_name = create_thumbnail(event, original_path)
             except (OSError, ValueError):
                 skipped += 1
                 continue
             connection.execute(
                 "UPDATE pictures SET thumbnail_path = ? WHERE id = ?",
-                (str(thumbnail_path), picture_row["id"]),
+                (thumbnail_name, picture_row["id"]),
             )
             created += 1
             if index % 25 == 0 or index == len(pictures):

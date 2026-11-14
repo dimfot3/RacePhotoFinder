@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Race Photo Finder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Race Photo Finder</p>
+        <h1>Find your race photos</h1>
+        <p class="intro">Choose your event, then search by bib number.</p>
+      </header>
+
+      {% if events %}
+        <ul class="event-list">
+          {% for event in events %}
+            <li>
+              <a href="{{ url_for('index', event_slug=event.slug) }}">
+                <span class="event-name">{{ event.name }}</span>
+                <span class="event-meta">
+                  {{ event.date or '' }}{% if not event.published %} · unpublished{% endif %}
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <section class="message">No events are available yet.</section>
+      {% endif %}
+    </main>
+  </body>
+</html>

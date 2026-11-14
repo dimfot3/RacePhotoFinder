@@ -4,20 +4,20 @@
       <article class="photo-card">
         <a
           class="photo-preview"
-          href="{{ url_for('picture', picture_id=picture.picture_id) }}"
+          href="{{ url_for('picture', event_slug=event_slug, picture_id=picture.picture_id) }}"
           data-lightbox
           data-alt="Race photo for bib {{ participant.bib }}"
           aria-label="View race photo full size"
         >
           <img
-            src="{{ url_for('thumbnail', picture_id=picture.picture_id) }}"
+            src="{{ url_for('thumbnail', event_slug=event_slug, picture_id=picture.picture_id) }}"
             alt="Race photo for bib {{ participant.bib }}"
             loading="lazy"
           >
         </a>
         <a
           class="download-link"
-          href="{{ url_for('download_picture', picture_id=picture.picture_id) }}"
+          href="{{ url_for('download_picture', event_slug=event_slug, picture_id=picture.picture_id) }}"
           download
         >
           Download
@@ -31,18 +31,19 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Race Photo Finder</title>
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ event.name }} · Race Photo Finder</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   </head>
   <body>
     <main>
       <header>
-        <p class="eyebrow">Race Photo Finder</p>
+        <p class="eyebrow">{{ event.name }}{% if event.date %} · {{ event.date }}{% endif %}</p>
         <h1>Find your race photos</h1>
         <p class="intro">Enter your bib number to see every matching photo.</p>
       </header>
 
-      <form method="get" action="{{ url_for('index') }}" role="search">
+      <form method="get" action="{{ url_for('index', event_slug=event_slug) }}" role="search">
         <label for="bib">Bib number</label>
         <div class="search-row">
           <input
@@ -66,6 +67,24 @@
         <section class="message">No participant found for bib <strong>{{ bib }}</strong>.</section>
       {% elif participant %}
         {% if pictures %}
+          <div class="results-bar">
+            <p class="results-count">
+              <strong>{{ pictures|length }}</strong>
+              photo{{ '' if pictures|length == 1 else 's' }} · bib {{ participant.bib }}
+            </p>
+            {% if pictures|length > 1 %}
+              <a
+                class="download-all"
+                href="{{ url_for('download_all', event_slug=event_slug, bib=participant.bib) }}"
+                download
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
+                  <path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Download all (ZIP)
+              </a>
+            {% endif %}
+          </div>
           {{ photo_grid(pictures, participant) }}
         {% else %}
           <section class="message">No matching photos were found for this participant.</section>

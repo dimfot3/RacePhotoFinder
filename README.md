@@ -53,25 +53,48 @@ python -m pip install -r requirements.txt
 
 ### 3. Process an event
 
-Point the importer at a folder of event photos. `--rerun` replaces any
-previously processed event:
+Each event gets its own name (lowercase letters, digits, and hyphens). Point
+the importer at a folder of event photos. `--rerun` replaces any previously
+processed photos of that event:
 
 ```bash
-python app.py "/path/to/event/photos" --rerun
+python app.py "/path/to/event/photos" --event athens-marathon-2026 --rerun
 ```
+
+To process an event without face matching (no face data is stored, and
+search shows bib matches only), add `--no-face-matching`. The choice is saved
+in the event's settings, so later imports of that event follow it too.
 
 To attach names and finish times to bib numbers, add
 `--participants-csv participants.csv`. See
 [database_core/participants.example.csv](database_core/participants.example.csv)
 for the format.
 
+Every event is stored in its own folder, `data/events/<event>/`, holding its
+SQLite database, thumbnails, and an `event.yaml` with its settings:
+
+```yaml
+name: Athens Marathon 2026
+date: 2026-11-08
+published: false      # search shows the event only once this is true
+face_matching: true   # false: no face data is stored for this event
+```
+
 ### 4. Search for photos
 
 ```bash
-python app.py
+python app.py --show-unpublished
 ```
 
-Open http://127.0.0.1:5000 and search by bib number.
+Open http://127.0.0.1:5000, choose the event, and search by bib number.
+`--show-unpublished` lets you review an event before setting
+`published: true`.
+
+To permanently remove an event's data (original photos are not touched):
+
+```bash
+python app.py --event athens-marathon-2026 --delete-event
+```
 
 Original photos are never modified. The application stores its index in SQLite
 and creates smaller previews for browsing.

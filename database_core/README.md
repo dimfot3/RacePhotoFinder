@@ -1,10 +1,14 @@
 # Database core
 
-The application uses SQLite and stores all records in one local file:
+The application uses SQLite with one self-contained folder per event:
 
 ```text
-database_core/race_photo_finder.db
+data/events/<event>/event.db       # this event's records
+data/events/<event>/thumbnails/    # generated previews
+data/events/<event>/event.yaml     # name, date, published, face_matching
 ```
+
+Set `RPF_DATA_DIR` to keep event data somewhere other than `data/`.
 
 The database is created automatically from `schema.sql`. No database server,
 Docker container, or separate database client is required.
@@ -21,7 +25,7 @@ The schema contains:
 - `face_embeddings`: one normalized SFace embedding for each suitable face,
   connected to its person detection.
 
-Imports also create cached JPEG thumbnails under `database_core/thumbnails/`.
+Imports also create cached JPEG thumbnails in the event's `thumbnails/` folder.
 The search grid loads only these small previews. Selecting a photo opens the
 full-size image, while its Download control downloads the untouched original.
 
@@ -38,7 +42,7 @@ and bib OCR. Accepted bibs are created automatically and connected to their
 pictures:
 
 ```bash
-python app.py "datasets/tsr_test/Fox Trail 2026"
+python app.py "datasets/tsr_test/Fox Trail 2026" --event fox-trail-2026
 ```
 
 Original photos are grouped for person detection using adaptive CUDA batches.
@@ -57,12 +61,12 @@ anonymous faces. Face-derived matches never feed back into the templates.
 The import is safe to rerun: existing paths and bibs are reused, and existing
 appearance metadata is updated.
 
-To replace the previous event completely, use `--rerun`. The new folder is
+To replace an event's previous import completely, use `--rerun`. Other events are untouched. The new folder is
 validated first; then old participants, pictures, appearances, and generated
 thumbnails are removed before inference starts:
 
 ```bash
-python app.py "datasets/tsr_test/Fox Trail 2026" --rerun
+python app.py "datasets/tsr_test/Fox Trail 2026" --event fox-trail-2026 --rerun
 ```
 
 Without `--rerun`, a folder import keeps and updates existing records.
@@ -83,21 +87,21 @@ See `participants.example.csv` for a ready-to-copy template.
 Import the roster together with the photos:
 
 ```bash
-python app.py "datasets/tsr_test/Fox Trail 2026" \
+python app.py "datasets/tsr_test/Fox Trail 2026" --event fox-trail-2026 \
   --participants-csv database_core/participants.example.csv
 ```
 
 Import only the CSV:
 
 ```bash
-python app.py \
+python app.py --event fox-trail-2026 \
   --participants-csv database_core/participants.example.csv
 ```
 
 ## Start the bib-search UI
 
 ```bash
-python app.py
+python app.py --show-unpublished
 ```
 
 Open `http://127.0.0.1:5000`.
@@ -108,12 +112,12 @@ For pictures imported before thumbnail support was added, create previews
 without rerunning detection or OCR:
 
 ```bash
-python app.py --rebuild-thumbnails
+python app.py --event fox-trail-2026 --rebuild-thumbnails
 ```
 
-To place the SQLite file somewhere else, set `DATABASE_PATH`:
+To keep event data somewhere else, set `RPF_DATA_DIR`:
 
 ```bash
-export DATABASE_PATH='/data/race/race_photo_finder.db'
+export RPF_DATA_DIR='/data/race'
 python app.py
 ```
