@@ -14,9 +14,12 @@ photo → person detection → bib recognition + face embedding → participant 
 ```
 
 <p align="center">
-  <img src="docs/pipeline_example.jpg" alt="Runner annotated with person, face, and bib 1389 detections" width="220">
+  <img src="docs/pipeline_example.jpg" alt="Runner annotated with person, face, and bib 1389 detections" height="320">
+  &nbsp;
+  <img src="docs/search_example.jpg" alt="Search for bib 1389 returns five photos: three found by reading the bib, two recovered by face matching where the bib is hidden or blurry" height="320">
   <br>
-  <sub>Real pipeline output: <b>person</b> detection (blue), <b>face</b> detection (red), and <b>bib</b> detection with OCR reading "1389" (green).</sub>
+  <sub><b>Left:</b> real pipeline output: <b>person</b> (blue), <b>face</b> (red), and <b>bib</b> with OCR reading "1389" (green).
+  <b>Right:</b> searching bib 1389 finds 3 photos by bib and recovers 2 more by face, where the bib is hidden or blurry.</sub>
 </p>
 
 The importer builds each participant's face template only from photos where the
