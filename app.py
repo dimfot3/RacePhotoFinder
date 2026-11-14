@@ -15,6 +15,7 @@ from database_core.core import (
     import_photo_folder,
     initialize_database,
     rebuild_thumbnails,
+    refresh_face_suggestions,
 )
 from database_core.events import Event
 from ui import create_app
@@ -51,6 +52,12 @@ def main():
         "--rebuild-thumbnails",
         action="store_true",
         help="Create small previews for pictures already in the event database",
+    )
+    parser.add_argument(
+        "--refresh-face-suggestions",
+        action="store_true",
+        help="Recompute stored face suggestions without re-running detection "
+        "(e.g. after changing search_similarity in face_matching/config.yaml)",
     )
     parser.add_argument(
         "--rerun",
@@ -95,6 +102,7 @@ def main():
     needs_event = (
         args.folder or args.participants_csv or args.rebuild_thumbnails
         or args.rerun or args.delete_event or changes_settings
+        or args.refresh_face_suggestions
     )
     if needs_event and not args.event:
         parser.error("--event is required to import, rebuild, or delete an event")
@@ -111,7 +119,10 @@ def main():
         return
 
     if changes_settings:
+        had_data = event.exists()
         event.update_settings(face_matching=args.face_matching)
+        if had_data and not args.folder:
+            args.refresh_face_suggestions = True
     if event:
         initialize_database(event)
     if args.folder:
@@ -120,6 +131,8 @@ def main():
         import_csv_only(event, args.participants_csv)
     if args.rebuild_thumbnails:
         rebuild_thumbnails(event)
+    if args.refresh_face_suggestions and not args.folder:
+        refresh_face_suggestions(event)
 
     if event and needs_event:
         settings = event.settings()

@@ -73,18 +73,22 @@
               photo{{ '' if pictures|length == 1 else 's' }} · bib {{ participant.bib }}
             </p>
             {% if pictures|length > 1 %}
-              <a
+              <button
+                type="button"
                 class="download-all"
-                href="{{ url_for('download_all', event_slug=event_slug, bib=participant.bib) }}"
-                download
+                data-download-all
+                data-manifest="{{ url_for('photo_manifest', event_slug=event_slug, bib=participant.bib) }}"
+                data-archive="{{ event_slug }}-bib-{{ participant.bib }}.zip"
+                hidden
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18">
                   <path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
-                Download all (ZIP)
-              </a>
+                <span data-label>Download all (ZIP)</span>
+              </button>
             {% endif %}
           </div>
+          <p class="download-status" data-download-status role="status" aria-live="polite" hidden></p>
           {{ photo_grid(pictures, participant) }}
         {% else %}
           <section class="message">No matching photos were found for this participant.</section>
@@ -119,5 +123,7 @@
         lightboxImage.removeAttribute('src');
       });
     </script>
+    <script src="{{ url_for('static', filename='download-each.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='download-all.js') }}"></script>
   </body>
 </html>

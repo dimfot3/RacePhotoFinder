@@ -124,3 +124,21 @@ CREATE INDEX IF NOT EXISTS person_detections_participant_id_idx
 
 CREATE INDEX IF NOT EXISTS face_embeddings_quality_idx
     ON face_embeddings (face_quality);
+
+-- Face suggestions precomputed after each import, so a search is a simple
+-- lookup instead of comparing against every face in the event.
+CREATE TABLE IF NOT EXISTS face_suggestions (
+    participant_id INTEGER NOT NULL,
+    picture_id INTEGER NOT NULL,
+    similarity REAL NOT NULL,
+
+    PRIMARY KEY (participant_id, picture_id),
+    CONSTRAINT face_suggestions_participant_fk
+        FOREIGN KEY (participant_id)
+        REFERENCES participants (id)
+        ON DELETE CASCADE,
+    CONSTRAINT face_suggestions_picture_fk
+        FOREIGN KEY (picture_id)
+        REFERENCES pictures (id)
+        ON DELETE CASCADE
+);

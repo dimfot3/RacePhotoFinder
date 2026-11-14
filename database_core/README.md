@@ -24,6 +24,11 @@ The schema contains:
   anonymous people remain here without creating fake participants.
 - `face_embeddings`: one normalized SFace embedding for each suitable face,
   connected to its person detection.
+- `face_suggestions`: each participant's possible face matches, computed once
+  at the end of an import so a search never compares faces live. After
+  changing `search_similarity` in `face_matching/config.yaml`, recompute them
+  without re-running detection:
+  `python app.py --event <event> --refresh-face-suggestions`.
 
 Imports also create cached JPEG thumbnails in the event's `thumbnails/` folder.
 The search grid loads only these small previews. Selecting a photo opens the

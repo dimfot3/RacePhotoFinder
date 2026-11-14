@@ -80,6 +80,17 @@ and crops without a complete bib were excluded (see
 split was preserved. The dataset itself is not redistributed with this
 repository.
 
+## client-zip
+
+The search page's "Download all" button builds the ZIP archive in the
+visitor's browser with client-zip, served unmodified from this repository.
+
+- `ui/static/vendor/client-zip-2.4.5.js` (client-zip 2.4.5, from npm)
+  - SHA-256: `779bd285f37baad3a84732579181ddd5611de562dafced6e573bca7efa476a44`
+- License: MIT License, Copyright 2020 David Junger. Included text:
+  `licenses/client-zip-MIT.txt`
+- Project: https://github.com/Touffy/client-zip
+
 ## Datasets and user-provided media
 
 The `datasets/` directory and event photographs are excluded from this

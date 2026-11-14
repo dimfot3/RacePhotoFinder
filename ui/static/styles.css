@@ -244,3 +244,20 @@ button:hover { background: #93efb6; }
 .event-list a:hover { border-color: #72e6a1; }
 .event-name { font-weight: 600; }
 .event-meta { color: #9ea6b2; font-size: 0.9rem; }
+
+.download-all { background: transparent; font-family: inherit; cursor: pointer; }
+.download-all[hidden] { display: none; }
+.download-all:disabled { opacity: 0.75; cursor: progress; }
+
+.download-status {
+  margin: -4px 0 14px;
+  color: #72e6a1;
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.download-status.error { color: #ffb4ba; }
+
+@media (max-width: 600px) {
+  .download-status { text-align: center; }
+}

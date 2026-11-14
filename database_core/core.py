@@ -26,68 +26,16 @@ def initialize_database(event):
     event.ensure_settings()
     with connect_database(event) as connection:
         connection.executescript(SCHEMA_PATH.read_text())
-        picture_columns = {
-            row["name"]
-            for row in connection.execute("PRAGMA table_info(pictures)").fetchall()
-        }
-        if "thumbnail_path" not in picture_columns:
-            connection.execute("ALTER TABLE pictures ADD COLUMN thumbnail_path TEXT")
-        appearance_columns = {
-            row["name"]
-            for row in connection.execute("PRAGMA table_info(appearances)").fetchall()
-        }
-        if "person_detection_id" not in appearance_columns:
-            connection.execute(
-                "ALTER TABLE appearances ADD COLUMN person_detection_id INTEGER "
-                "REFERENCES person_detections(id) ON DELETE SET NULL"
-            )
-        if "association_method" not in appearance_columns:
-            connection.execute(
-                "ALTER TABLE appearances ADD COLUMN association_method TEXT "
-                "NOT NULL DEFAULT 'bib'"
-            )
-        if "association_confidence" not in appearance_columns:
-            connection.execute(
-                "ALTER TABLE appearances ADD COLUMN association_confidence REAL"
-            )
-
-
-def find_participant_pictures(event, bib):
-    """Return participant details and associated pictures for an exact bib."""
-    query = """
-        SELECT
-            participant.id AS participant_id,
-            participant.bib,
-            participant.name,
-            participant.email,
-            participant.net_finish_time,
-            picture.id AS picture_id,
-            picture.full_path,
-            picture.thumbnail_path
-        FROM participants AS participant
-        LEFT JOIN appearances AS appearance
-          ON appearance.participant_id = participant.id
-        LEFT JOIN pictures AS picture
-          ON picture.id = appearance.picture_id
-        WHERE participant.bib = ?
-        ORDER BY picture.id
-    """
-    with connect_database(event) as connection:
-        return connection.execute(query, (bib,)).fetchall()
 
 
 def find_participant_search_results(event, bib, include_faces=True):
-    """Return confirmed bib photos and non-mutating face suggestions.
+    """Return confirmed bib photos and precomputed face suggestions.
 
-    With ``include_faces=False`` only bib-confirmed (and manual) photos are
-    returned, even if the event database still holds face embeddings.
+    Face suggestions are computed once per import by
+    ``rebuild_face_suggestions``, so a search is two indexed lookups and never
+    touches face embeddings. With ``include_faces=False`` only bib-confirmed
+    (and manual) photos are returned.
     """
-    from face_matching.matcher import (
-        build_templates,
-        decode_embedding,
-        load_config,
-    )
-
     with connect_database(event) as connection:
         participant = connection.execute(
             """
@@ -117,65 +65,24 @@ def find_participant_search_results(event, bib, include_faces=True):
             (participant["id"],),
         ).fetchall()
         confirmed = [dict(row) for row in confirmed_rows]
-        confirmed_ids = {row["picture_id"] for row in confirmed}
         if not include_faces:
             return dict(participant), confirmed, []
 
-        reference_rows = connection.execute(
-            """
-            SELECT person.participant_id, face.embedding, face.face_quality
-            FROM person_detections AS person
-            JOIN face_embeddings AS face ON face.person_detection_id = person.id
-            WHERE person.participant_id = ?
-              AND person.association_method = 'bib'
-            """,
-            (participant["id"],),
-        ).fetchall()
-        config = load_config()
-        template = build_templates(reference_rows, config).get(participant["id"])
-        if template is None:
-            return dict(participant), confirmed, []
-
-        candidate_rows = connection.execute(
+        possible_rows = connection.execute(
             """
             SELECT
                 picture.id AS picture_id,
                 picture.full_path,
                 picture.thumbnail_path,
-                face.embedding,
-                face.face_quality
-            FROM face_embeddings AS face
-            JOIN person_detections AS person
-              ON person.id = face.person_detection_id
-            JOIN pictures AS picture ON picture.id = person.picture_id
-            WHERE face.face_quality >= ?
+                suggestion.similarity
+            FROM face_suggestions AS suggestion
+            JOIN pictures AS picture ON picture.id = suggestion.picture_id
+            WHERE suggestion.participant_id = ?
+            ORDER BY suggestion.similarity DESC, picture.id
             """,
-            (float(config["min_match_quality"]),),
+            (participant["id"],),
         ).fetchall()
-
-    threshold = float(config["search_similarity"])
-    possible_by_picture = {}
-    for row in candidate_rows:
-        if row["picture_id"] in confirmed_ids:
-            continue
-        embedding = decode_embedding(row["embedding"], config)
-        similarity = float(embedding @ template.embedding)
-        if similarity < threshold:
-            continue
-        current = possible_by_picture.get(row["picture_id"])
-        if current is None or similarity > current["similarity"]:
-            possible_by_picture[row["picture_id"]] = {
-                "picture_id": row["picture_id"],
-                "full_path": row["full_path"],
-                "thumbnail_path": row["thumbnail_path"],
-                "similarity": similarity,
-            }
-
-    possible = sorted(
-        possible_by_picture.values(),
-        key=lambda row: (-row["similarity"], row["picture_id"]),
-    )
-    return dict(participant), confirmed, possible
+    return dict(participant), confirmed, [dict(row) for row in possible_rows]
 
 
 def find_picture(event, picture_id):
@@ -538,6 +445,102 @@ def run_face_matching(connection):
     return matched
 
 
+def rebuild_face_suggestions(connection, participant_block=256):
+    """Precompute every participant's face suggestions for search.
+
+    Each participant's template (built only from bib-confirmed faces) is
+    compared with every suitable face in the event in one matrix operation per
+    block of participants. Pictures already confirmed for that participant are
+    left out; for each remaining picture the best similarity is kept.
+    """
+    import numpy as np
+    from face_matching.matcher import build_templates, load_config
+
+    config = load_config()
+    with connection:
+        connection.execute("DELETE FROM face_suggestions")
+
+    reference_rows = connection.execute(
+        """
+        SELECT person.participant_id, face.embedding, face.face_quality
+        FROM person_detections AS person
+        JOIN face_embeddings AS face ON face.person_detection_id = person.id
+        WHERE person.association_method = 'bib'
+          AND person.participant_id IS NOT NULL
+        """
+    ).fetchall()
+    templates = build_templates(reference_rows, config)
+    candidate_rows = connection.execute(
+        """
+        SELECT person.picture_id, face.embedding
+        FROM face_embeddings AS face
+        JOIN person_detections AS person
+          ON person.id = face.person_detection_id
+        WHERE face.face_quality >= ?
+        """,
+        (float(config["min_match_quality"]),),
+    ).fetchall()
+    if not templates or not candidate_rows:
+        return 0
+
+    dimension = int(config["embedding_dimension"])
+    faces = np.frombuffer(
+        b"".join(row["embedding"] for row in candidate_rows), dtype="<f4"
+    ).reshape(-1, dimension)
+    faces = faces / np.linalg.norm(faces, axis=1, keepdims=True)
+    face_pictures = np.fromiter(
+        (row["picture_id"] for row in candidate_rows),
+        dtype=np.int64,
+        count=len(candidate_rows),
+    )
+    participant_ids = list(templates)
+    template_matrix = np.stack([templates[pid].embedding for pid in participant_ids])
+    confirmed = {
+        (row["participant_id"], row["picture_id"])
+        for row in connection.execute(
+            "SELECT participant_id, picture_id FROM appearances "
+            "WHERE association_method IN ('bib', 'manual')"
+        )
+    }
+    threshold = float(config["search_similarity"])
+
+    best = {}
+    for start in range(0, len(participant_ids), participant_block):
+        similarities = faces @ template_matrix[start:start + participant_block].T
+        face_index, block_index = np.nonzero(similarities >= threshold)
+        for f, b in zip(face_index.tolist(), block_index.tolist()):
+            key = (participant_ids[start + b], int(face_pictures[f]))
+            if key in confirmed:
+                continue
+            similarity = float(similarities[f, b])
+            if similarity > best.get(key, -1.0):
+                best[key] = similarity
+
+    with connection:
+        connection.executemany(
+            "INSERT INTO face_suggestions (participant_id, picture_id, similarity) "
+            "VALUES (?, ?, ?)",
+            [(pid, picture_id, sim) for (pid, picture_id), sim in best.items()],
+        )
+    print(
+        f"Face suggestions ready: {len(best)} suggestion(s) for "
+        f"{len(templates)} participant(s)."
+    )
+    return len(best)
+
+
+def refresh_face_suggestions(event):
+    """Recompute stored face suggestions for an already imported event."""
+    initialize_database(event)
+    with connect_database(event) as connection:
+        if event.settings()["face_matching"]:
+            return rebuild_face_suggestions(connection)
+        with connection:
+            connection.execute("DELETE FROM face_suggestions")
+        print(f"Face matching is disabled for '{event.slug}': suggestions cleared.")
+        return 0
+
+
 def reset_database(event):
     """Delete this event's records and its generated thumbnails."""
     initialize_database(event)
@@ -658,6 +661,10 @@ def import_photo_folder(event, folder, csv_path=None, rerun=False):
 
         if face_matching_enabled:
             face_matches = run_face_matching(connection)
+            rebuild_face_suggestions(connection)
+        else:
+            with connection:
+                connection.execute("DELETE FROM face_suggestions")
 
     print(
         f"Import of '{event.slug}' complete: {processed} picture(s), {detected_people} person "

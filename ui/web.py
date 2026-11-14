@@ -9,17 +9,16 @@ import os
 from pathlib import Path
 import sqlite3
 from urllib.parse import urlparse
-import zipfile
 
 from flask import (
     Flask,
-    Response,
     abort,
     redirect,
     render_template,
     request,
+    jsonify,
     send_file,
-    stream_with_context,
+    url_for,
 )
 
 from database_core.core import (
@@ -168,86 +167,73 @@ def create_app():
             conditional=True,
         )
 
-    @app.get("/e/<event_slug>/download-all")
-    def download_all(event_slug):
-        """Stream every photo shown for a bib as one ZIP archive."""
-        event, settings = _event_or_abort(event_slug)
-        bib = request.args.get("bib", "").strip()
-        if not bib or len(bib) > 30:
-            abort(400)
-        try:
-            participant, confirmed, possible = find_participant_search_results(
-                event, bib, include_faces=settings["face_matching"]
-            )
-        except sqlite3.Error:
-            app.logger.exception("Download-all lookup failed")
-            abort(503)
-        if participant is None:
-            abort(404)
+    @app.get("/e/<event_slug>/photos.json")
+    def photo_manifest(event_slug):
+        """List a bib's photos for the "Download all" button.
 
-        files = []
-        for record in confirmed + possible:
-            full_path = record["full_path"]
-            if urlparse(full_path).scheme:
-                continue  # remote storage is not bundled yet
-            path = local_path(full_path)
-            if path.is_file():
-                files.append(path)
-        if not files:
-            abort(404)
-
-        safe_bib = "".join(ch for ch in bib if ch.isalnum() or ch in "-_") or "photos"
-        archive_name = f"{event.slug}-bib-{safe_bib}.zip"
-        return Response(
-            stream_with_context(_zip_stream(files)),
-            mimetype="application/zip",
-            headers={"Content-Disposition": f'attachment; filename="{archive_name}"'},
+        The browser fetches every photo itself (zipping it where supported,
+        otherwise downloading the photos one by one), so photos never stream
+        through this server once they are served from R2.
+        """
+        event, archive_name, records = _bib_photos_or_abort(app, event_slug)
+        names = _unique_names(Path(record["full_path"]).name for record in records)
+        return jsonify(
+            archive_name=archive_name,
+            files=[
+                {
+                    "name": name,
+                    "url": url_for(
+                        "picture",
+                        event_slug=event.slug,
+                        picture_id=record["picture_id"],
+                    ),
+                    "download_url": url_for(
+                        "download_picture",
+                        event_slug=event.slug,
+                        picture_id=record["picture_id"],
+                    ),
+                }
+                for name, record in zip(names, records)
+            ],
         )
 
     return app
 
 
-class _ChunkSink:
-    """Write-only file object that collects ZIP bytes for streaming."""
-
-    def __init__(self):
-        self.chunks = []
-
-    def write(self, data):
-        self.chunks.append(bytes(data))
-        return len(data)
-
-    def flush(self):
-        pass
-
-    def drain(self):
-        data = b"".join(self.chunks)
-        self.chunks.clear()
-        return data
+def _unique_names(names):
+    """Make file names unique inside an archive: a.jpg, a-2.jpg, ..."""
+    used = set()
+    result = []
+    for name in names:
+        stem, dot, suffix = name.rpartition(".")
+        if not dot:
+            stem, suffix = name, ""
+        candidate, counter = name, 2
+        while candidate in used:
+            candidate = f"{stem}-{counter}{dot}{suffix}"
+            counter += 1
+        used.add(candidate)
+        result.append(candidate)
+    return result
 
 
-def _zip_stream(paths, chunk_size=1024 * 1024):
-    """Yield a ZIP archive piece by piece, without building it in memory.
-
-    Photos are stored uncompressed: JPEGs do not shrink further, and this keeps
-    the server's CPU free.
-    """
-    sink = _ChunkSink()
-    used_names = set()
-    with zipfile.ZipFile(sink, "w", compression=zipfile.ZIP_STORED) as archive:
-        for path in paths:
-            name = path.name
-            stem, suffix, counter = path.stem, path.suffix, 2
-            while name in used_names:
-                name = f"{stem}-{counter}{suffix}"
-                counter += 1
-            used_names.add(name)
-            with path.open("rb") as source, archive.open(name, "w") as target:
-                while chunk := source.read(chunk_size):
-                    target.write(chunk)
-                    yield sink.drain()
-            yield sink.drain()
-    yield sink.drain()
+def _bib_photos_or_abort(app, event_slug):
+    """Return (event, archive name, photo records) shown for ?bib=..."""
+    event, settings = _event_or_abort(event_slug)
+    bib = request.args.get("bib", "").strip()
+    if not bib or len(bib) > 30:
+        abort(400)
+    try:
+        participant, confirmed, possible = find_participant_search_results(
+            event, bib, include_faces=settings["face_matching"]
+        )
+    except sqlite3.Error:
+        app.logger.exception("Bib photo lookup failed")
+        abort(503)
+    if participant is None or not (confirmed or possible):
+        abort(404)
+    safe_bib = "".join(ch for ch in bib if ch.isalnum() or ch in "-_") or "photos"
+    return event, f"{event.slug}-bib-{safe_bib}.zip", confirmed + possible
 
 
 def _event_or_abort(event_slug):
